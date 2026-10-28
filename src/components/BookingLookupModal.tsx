@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Loader2, AlertCircle, CheckCircle2, Calendar, User, Phone, BedDouble, Shield } from 'lucide-react';
+import { getClientBookings } from '../services/clientStorage';
 
 interface BookingLookupModalProps {
   onClose: () => void;
@@ -21,16 +22,48 @@ export const BookingLookupModal: React.FC<BookingLookupModalProps> = ({ onClose 
     setBooking(null);
 
     try {
-      let url = `/api/bookings/lookup?reference=${encodeURIComponent(reference.trim())}`;
-      if (phone.trim()) {
-        url += `&phone=${encodeURIComponent(phone.trim())}`;
+      let data: any = null;
+      let ok = false;
+
+      try {
+        let url = `/api/bookings/lookup?reference=${encodeURIComponent(reference.trim())}`;
+        if (phone.trim()) {
+          url += `&phone=${encodeURIComponent(phone.trim())}`;
+        }
+
+        const res = await fetch(url);
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('application/json')) {
+          data = await res.json();
+          ok = res.ok && data.success;
+        }
+      } catch {
+        // Network or static deployment without backend
       }
 
-      const res = await fetch(url);
-      const data = await res.json();
+      if (!ok) {
+        // Fallback to clientStorage
+        const refQuery = reference.trim().toUpperCase();
+        const phoneQuery = phone.replace(/\D/g, '');
+        const list = getClientBookings('all', '');
+        const match = list.find((b) => {
+          const matchRef = b.reference.toUpperCase() === refQuery;
+          if (!matchRef) return false;
+          if (phoneQuery) {
+            const bPhone = b.guest_phone.replace(/\D/g, '');
+            return bPhone.includes(phoneQuery) || phoneQuery.includes(bPhone);
+          }
+          return true;
+        });
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'No reservation found for this reference.');
+        if (match) {
+          data = { success: true, booking: match };
+          ok = true;
+        }
+      }
+
+      if (!ok || !data?.booking) {
+        throw new Error(data?.error || 'No reservation found for this reference.');
       }
 
       setBooking(data.booking);

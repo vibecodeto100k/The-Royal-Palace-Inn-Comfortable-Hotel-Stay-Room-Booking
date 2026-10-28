@@ -94,7 +94,7 @@ export const WhatsAppSuccessModal: React.FC<WhatsAppSuccessModalProps> = ({ data
           <div>
             <span className="text-[10px] text-[#788072] block uppercase">Total</span>
             <span className="font-serif font-bold text-sm text-[#232624]">
-              ₹{data.booking.total_amount.toLocaleString('en-IN')}
+              ₹{Number(data.booking.total_amount || 0).toLocaleString('en-IN')}
             </span>
           </div>
         </div>

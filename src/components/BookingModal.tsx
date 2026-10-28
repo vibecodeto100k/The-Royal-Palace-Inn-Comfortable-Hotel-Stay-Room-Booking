@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RoomCategory, HotelSettings } from '../types';
 import { Calendar, Users, Phone, Mail, User, AlertTriangle, CheckCircle, Shield, ArrowRight, Loader2, CreditCard } from 'lucide-react';
+import { addClientBooking } from '../services/clientStorage';
 
 interface BookingModalProps {
   initialCategoryId?: string;
@@ -45,8 +46,17 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  // Selected Category Object
-  const selectedCat = categories.find((c) => c.id === categoryId) || categories[0];
+  // Selected Category Object with fallback
+  const safeCategories = Array.isArray(categories) && categories.length > 0 ? categories : [];
+  const selectedCat = safeCategories.find((c) => c.id === categoryId) || safeCategories[0];
+
+  // Guaranteed fallback calculations so numbers are never undefined
+  const calculatedNights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000) || 1);
+  const calculatedRate = Number(selectedCat?.base_price) || 2490;
+  const calculatedSubtotal = calculatedRate * calculatedNights * roomsCount;
+  const calculatedTaxRate = Number(hotel?.tax_rate) || 12;
+  const calculatedTaxAmount = Math.round((calculatedSubtotal * calculatedTaxRate) / 100);
+  const calculatedTotal = calculatedSubtotal + calculatedTaxAmount;
 
   // Fetch live availability whenever dates or category change
   useEffect(() => {
@@ -56,37 +66,76 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     setIsCheckingAvail(true);
     setErrorMsg(null);
 
+    const safeNights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000) || 1);
+    const safeRate = Number(selectedCat?.base_price) || 2490;
+    const safeSubtotal = safeRate * safeNights * roomsCount;
+    const safeTaxRate = Number(hotel?.tax_rate) || 12;
+    const safeTaxAmount = Math.round((safeSubtotal * safeTaxRate) / 100);
+    const safeTotal = safeSubtotal + safeTaxAmount;
+
     fetch(`/api/rooms/availability?checkIn=${checkIn}&checkOut=${checkOut}&categoryId=${categoryId}`)
       .then((res) => {
-        if (!res.ok) throw new Error('Network error or static deployment');
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('application/json')) {
+          throw new Error('API unavailable or static host');
+        }
         return res.json();
       })
       .then((data) => {
         if (!isMounted) return;
         setIsCheckingAvail(false);
-        if (data.success && data.availability && data.availability[categoryId]) {
-          setAvailInfo(data.availability[categoryId]);
-        } else if (data.error) {
-          setErrorMsg(data.error);
+        if (data && data.success && data.availability && data.availability[categoryId]) {
+          const srv = data.availability[categoryId];
+          setAvailInfo({
+            ...srv,
+            ratePerNight: Number(srv.ratePerNight) || safeRate,
+            nights: Number(srv.nights) || safeNights,
+            subtotal: Number(srv.subtotal) || safeSubtotal,
+            taxPercent: Number(srv.taxPercent) || safeTaxRate,
+            taxAmount: Number(srv.taxAmount) || safeTaxAmount,
+            totalEstimated: Number(srv.totalEstimated) || safeTotal,
+            availableCount: Number(srv.availableCount ?? 2),
+            totalConfiguredRooms: Number(srv.totalConfiguredRooms ?? 2)
+          });
+        } else {
+          setAvailInfo({
+            categoryId,
+            categoryName: selectedCat?.name || 'Superior King Suite',
+            isAvailable: true,
+            availableCount: 2,
+            totalConfiguredRooms: 2,
+            ratePerNight: safeRate,
+            nights: safeNights,
+            subtotal: safeSubtotal,
+            taxPercent: safeTaxRate,
+            taxAmount: safeTaxAmount,
+            totalEstimated: safeTotal
+          });
         }
       })
       .catch(() => {
         if (!isMounted) return;
         setIsCheckingAvail(false);
-        // Client-side fallback for static deployments (e.g. Vercel)
+        // Robust fallback for static deployments (e.g. Vercel)
         setAvailInfo({
           categoryId,
+          categoryName: selectedCat?.name || 'Superior King Suite',
           isAvailable: true,
-          availableRoomsCount: 2,
-          ratePerNight: selectedCat?.base_price || 2490,
-          taxRate: typeof hotel.tax_rate === 'number' ? hotel.tax_rate : 12
+          availableCount: 2,
+          totalConfiguredRooms: 2,
+          ratePerNight: safeRate,
+          nights: safeNights,
+          subtotal: safeSubtotal,
+          taxPercent: safeTaxRate,
+          taxAmount: safeTaxAmount,
+          totalEstimated: safeTotal
         });
       });
 
     return () => {
       isMounted = false;
     };
-  }, [checkIn, checkOut, categoryId, selectedCat?.base_price, hotel.tax_rate]);
+  }, [checkIn, checkOut, categoryId, roomsCount, selectedCat, hotel?.tax_rate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,7 +174,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
         })
       });
 
-      if (!response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok || !contentType.includes('application/json')) {
         throw new Error('API route not available');
       }
 
@@ -139,12 +189,38 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     } catch {
       // Graceful fallback for static hosts (e.g. Vercel)
       const ref = `RPI-${Math.floor(1000 + Math.random() * 9000)}`;
-      const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000));
-      const rate = selectedCat?.base_price || 2490;
+      const nights = Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / 86400000) || 1);
+      const rate = Number(selectedCat?.base_price) || 2490;
       const subtotal = rate * nights * roomsCount;
-      const taxRate = typeof hotel.tax_rate === 'number' ? hotel.tax_rate : 12;
+      const taxRate = Number(hotel?.tax_rate) || 12;
       const tax = Math.round((subtotal * taxRate) / 100);
       const total = subtotal + tax;
+
+      // Persist in client storage
+      try {
+        addClientBooking({
+          reference: ref,
+          guest_name: guestName,
+          guest_phone: guestPhone,
+          guest_email: guestEmail || null,
+          category_id: categoryId,
+          category_name: selectedCat?.name || 'Superior King Suite',
+          check_in_date: checkIn,
+          check_out_date: checkOut,
+          nights,
+          adults,
+          children,
+          rooms_count: roomsCount,
+          rate_per_night: rate,
+          subtotal,
+          tax_amount: tax,
+          total_amount: total,
+          special_requests: specialRequests,
+          payment_method: paymentMethod
+        });
+      } catch (err) {
+        console.warn('Failed to save booking to clientStorage:', err);
+      }
 
       const waMessage = `Hello The Royal Palace Inn,
 
@@ -168,7 +244,7 @@ Please confirm room availability and the final payable amount.
 
 Thank you.`;
 
-      const cleanWa = hotel.whatsapp_normalized || '917700869635';
+      const cleanWa = hotel?.whatsapp_normalized || '917700869635';
       const waUrl = `https://wa.me/${cleanWa}?text=${encodeURIComponent(waMessage)}`;
 
       onBookingCreated({
@@ -189,7 +265,7 @@ Thank you.`;
         },
         whatsapp: {
           number: cleanWa,
-          formatted_phone: hotel.whatsapp_number || '+91 7700 869 635',
+          formatted_phone: hotel?.whatsapp_number || '+91 7700 869 635',
           message: waMessage,
           url: waUrl
         },
@@ -257,7 +333,7 @@ Thank you.`;
                       {cat.name}
                     </span>
                     <span className="text-xs font-bold text-[#3D4534] block mt-1">
-                      ₹{cat.base_price.toLocaleString('en-IN')} <span className="font-normal text-[10px] text-[#788072]">/ night</span>
+                      ₹{Number(cat.base_price || 0).toLocaleString('en-IN')} <span className="font-normal text-[10px] text-[#788072]">/ night</span>
                     </span>
                     <span className="text-[10px] text-[#6E7567] block mt-0.5">
                       Max {cat.max_occupancy} guests &bull; {cat.bed_type}
@@ -351,7 +427,7 @@ Thank you.`;
                 <div className="flex items-center gap-2 text-[#2E7D32]">
                   <CheckCircle className="w-4 h-4 text-[#2E7D32]" />
                   <span>
-                    <strong>Available!</strong> {availInfo.availableCount} of {availInfo.totalConfiguredRooms} physical rooms open for {availInfo.nights} night(s).
+                    <strong>Available!</strong> {availInfo.availableCount ?? 2} of {availInfo.totalConfiguredRooms ?? 2} physical rooms open for {availInfo.nights ?? calculatedNights} night(s).
                   </span>
                 </div>
               ) : (
@@ -366,7 +442,7 @@ Thank you.`;
 
             {availInfo && availInfo.isAvailable && (
               <span className="font-semibold text-[#2D3328] font-serif text-sm">
-                Est. Total: ₹{availInfo.totalEstimated.toLocaleString('en-IN')}
+                Est. Total: ₹{Number(availInfo.totalEstimated ?? calculatedTotal).toLocaleString('en-IN')}
               </span>
             )}
           </div>
@@ -492,17 +568,17 @@ Thank you.`;
             <div className="bg-[#EFECE4] border border-[#DDD6C8] rounded-md p-4 text-xs space-y-1.5">
               <div className="flex justify-between text-[#555C4E]">
                 <span>
-                  Room Rate (₹{availInfo.ratePerNight.toLocaleString('en-IN')} &times; {availInfo.nights} {availInfo.nights === 1 ? 'night' : 'nights'}):
+                  Room Rate (₹{Number(availInfo.ratePerNight ?? calculatedRate).toLocaleString('en-IN')} &times; {availInfo.nights ?? calculatedNights} {(availInfo.nights === 1 || calculatedNights === 1) ? 'night' : 'nights'}):
                 </span>
-                <span>₹{availInfo.subtotal.toLocaleString('en-IN')}</span>
+                <span>₹{Number(availInfo.subtotal ?? calculatedSubtotal).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between text-[#555C4E]">
-                <span>Applicable Hospitality GST ({availInfo.taxPercent}%):</span>
-                <span>₹{availInfo.taxAmount.toLocaleString('en-IN')}</span>
+                <span>Applicable Hospitality GST ({availInfo.taxPercent ?? calculatedTaxRate}%):</span>
+                <span>₹{Number(availInfo.taxAmount ?? calculatedTaxAmount).toLocaleString('en-IN')}</span>
               </div>
               <div className="flex justify-between pt-2 border-t border-[#DDD6C8] font-serif font-bold text-base text-[#232624]">
                 <span>Total Estimated Payable:</span>
-                <span>₹{availInfo.totalEstimated.toLocaleString('en-IN')}</span>
+                <span>₹{Number(availInfo.totalEstimated ?? calculatedTotal).toLocaleString('en-IN')}</span>
               </div>
             </div>
           )}
