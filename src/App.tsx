@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HotelSettings, RoomCategory, GalleryImage } from './types';
+import { DEFAULT_HOTEL_SETTINGS, DEFAULT_ROOM_CATEGORIES, DEFAULT_GALLERY_IMAGES } from './constants/initialData';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { RoomsSection } from './components/RoomsSection';
@@ -26,11 +27,11 @@ export default function App() {
       : 'public';
   });
 
-  // Hotel data state
-  const [hotel, setHotel] = useState<HotelSettings | null>(null);
-  const [categories, setCategories] = useState<RoomCategory[]>([]);
-  const [gallery, setGallery] = useState<GalleryImage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Hotel data state (initialized with verified defaults so content & images always render on Vercel)
+  const [hotel, setHotel] = useState<HotelSettings>(DEFAULT_HOTEL_SETTINGS);
+  const [categories, setCategories] = useState<RoomCategory[]>(DEFAULT_ROOM_CATEGORIES);
+  const [gallery, setGallery] = useState<GalleryImage[]>(DEFAULT_GALLERY_IMAGES);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Modals state
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -48,22 +49,33 @@ export default function App() {
     try {
       const ts = Date.now();
       const [hotelRes, catsRes, galleryRes] = await Promise.all([
-        fetch(`/api/hotel/info?_t=${ts}`, { cache: 'no-store' }),
-        fetch(`/api/rooms/categories?_t=${ts}`, { cache: 'no-store' }),
-        fetch(`/api/gallery?_t=${ts}`, { cache: 'no-store' })
+        fetch(`/api/hotel/info?_t=${ts}`, { cache: 'no-store' }).catch(() => null),
+        fetch(`/api/rooms/categories?_t=${ts}`, { cache: 'no-store' }).catch(() => null),
+        fetch(`/api/gallery?_t=${ts}`, { cache: 'no-store' }).catch(() => null)
       ]);
 
-      const [hotelJson, catsJson, galleryJson] = await Promise.all([
-        hotelRes.json(),
-        catsRes.json(),
-        galleryRes.json()
-      ]);
+      if (hotelRes && hotelRes.ok) {
+        const hotelJson = await hotelRes.json().catch(() => null);
+        if (hotelJson?.success && hotelJson.hotel) {
+          setHotel(hotelJson.hotel);
+        }
+      }
 
-      if (hotelJson.success) setHotel(hotelJson.hotel);
-      if (catsJson.success) setCategories(catsJson.categories);
-      if (galleryJson.success) setGallery(galleryJson.images);
+      if (catsRes && catsRes.ok) {
+        const catsJson = await catsRes.json().catch(() => null);
+        if (catsJson?.success && Array.isArray(catsJson.categories) && catsJson.categories.length > 0) {
+          setCategories(catsJson.categories);
+        }
+      }
+
+      if (galleryRes && galleryRes.ok) {
+        const galleryJson = await galleryRes.json().catch(() => null);
+        if (galleryJson?.success && Array.isArray(galleryJson.images) && galleryJson.images.length > 0) {
+          setGallery(galleryJson.images);
+        }
+      }
     } catch (err) {
-      console.error('Failed to load hotel data:', err);
+      console.warn('Backend API unavailable; running on verified local presets:', err);
     } finally {
       setIsLoading(false);
     }
@@ -145,57 +157,8 @@ export default function App() {
     );
   }
 
-  // Fallback defaults if loading
-  const defaultHotel: HotelSettings = hotel || {
-    hotel_name: 'The Royal Palace Inn',
-    tagline: 'An Intimate Heritage Sanctuary of Understated Luxury',
-    description: 'An exclusive six-room boutique retreat designed for discerning travellers, couples, and families in Rajasthan.',
-    address: '14, Heritage Palace Enclave, Civil Lines',
-    city: 'Jaipur',
-    state: 'Rajasthan',
-    pincode: '302006',
-    country: 'India',
-    phone: '+91 7700 869 635',
-    whatsapp_number: '+91 7700 869 635',
-    whatsapp_normalized: '917700869635',
-    email: 'reservations@theroyalpalaceinn.com',
-    google_maps_url: 'https://maps.google.com/?q=Civil+Lines+Jaipur',
-    google_maps_embed_url: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14232.894318357777!2d75.77665241774903!3d26.905953334588965!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x396db415a77f9839%3A0x6b6df5ea8283a30!2sCivil%20Lines%2C%20Jaipur%2C%20Rajasthan!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin',
-    latitude: '26.905953',
-    longitude: '75.776652',
-    location_heading: 'Our Location & Directions',
-    location_description: 'Conveniently situated in Jaipur\'s quiet residential Civil Lines enclave, minutes from historical monuments, transit hubs, and authentic bazaars.',
-    check_in_time: '14:00 (2:00 PM)',
-    check_out_time: '11:00 (11:00 AM)',
-    tax_rate: 12,
-    currency: 'INR',
-    currency_symbol: '₹',
-    hero_headline: 'Where Heritage Grace Meets Understated Luxury',
-    hero_subheadline: 'An intimate 6-room sanctuary in Rajasthan, thoughtfully curated for tranquil stays, bespoke service, and authentic Indian hospitality.',
-    hero_image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=2000&q=85',
-    cancellation_policy: 'Free cancellation up to 48 hours prior to check-in (14:00 local time).',
-    house_rules: 'Valid government photo ID is mandatory for all adult guests at check-in.',
-    facilities: [
-      'High-Speed Fibre Wi-Fi',
-      'Artisanal Breakfast & Dining',
-      '24-Hour Front Desk',
-      'Climate Control',
-      'Italian Marble Bathrooms',
-      '24x7 Power Backup',
-      'Secure Valet Parking'
-    ],
-    payment_methods: {
-      pay_at_hotel: { enabled: true, title: 'Pay at Hotel', instructions: 'Cash, Card, or UPI upon check-in' },
-      upi: { enabled: true, title: 'UPI Transfer', vpa: 'royalpalaceinn@okhdfcbank', instructions: 'Direct UPI transfer' },
-      online_gateway: { enabled: false, provider: 'razorpay', key_id: '', instructions: '' }
-    },
-    whatsapp_settings: {
-      mode: 'mode_a',
-      phone: '917700869635',
-      template: ''
-    }
-  };
-
+  // Hotel settings with verified fallback
+  const defaultHotel: HotelSettings = hotel || DEFAULT_HOTEL_SETTINGS;
   const cleanWa = defaultHotel.whatsapp_normalized || '917700869635';
 
   return (

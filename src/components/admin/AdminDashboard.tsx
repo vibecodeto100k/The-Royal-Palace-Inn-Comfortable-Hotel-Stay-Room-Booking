@@ -19,7 +19,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   const [currentUser, setCurrentUser] = useState<any | null>(null);
 
   // Login form state
-  const [loginUsername, setLoginUsername] = useState('admin');
+  const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -230,9 +230,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               <input
                 type="text"
                 required
+                placeholder="Enter username"
+                autoComplete="username"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
-                className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 text-sm text-white placeholder-[#687062] focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
 
@@ -244,31 +246,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
                 type="password"
                 required
                 placeholder="Enter password"
+                autoComplete="current-password"
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#D4AF37]"
+                className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 text-sm text-white placeholder-[#687062] focus:outline-none focus:border-[#D4AF37]"
               />
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full bg-[#3D4534] hover:bg-[#4E5942] text-white py-3 rounded text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md mt-2"
+              className="w-full bg-[#3D4534] hover:bg-[#4E5942] text-white py-3 rounded text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-md mt-2 cursor-pointer disabled:opacity-60"
             >
               <Key className="w-4 h-4" />
               <span>{isLoggingIn ? 'Verifying...' : 'Sign In to Dashboard'}</span>
             </button>
           </form>
 
-          {/* Default Credentials Helper */}
-          <div className="mt-6 pt-5 border-t border-[#3E4738] text-[11px] text-[#9A9E94] bg-[#232720] p-3 rounded">
-            <span className="font-semibold text-[#D4AF37] block mb-1">
-              Default Admin Account:
-            </span>
-            Username: <code className="text-white font-mono">admin</code> &bull; Password: <code className="text-white font-mono">RoyalPalace2026!</code>
-            <p className="mt-1 text-[10px] text-[#7E8578]">
-              (You can change your password anytime inside the dashboard under Settings)
-            </p>
+          <div className="mt-6 pt-4 border-t border-[#3E4738]/50 text-center text-[11px] text-[#8C9484]">
+            <p>Authorized hotel management and staff only.</p>
           </div>
         </div>
       </div>

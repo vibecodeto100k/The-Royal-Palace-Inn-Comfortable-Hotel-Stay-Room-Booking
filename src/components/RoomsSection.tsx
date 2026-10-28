@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RoomCategory } from '../types';
+import { DEFAULT_ROOM_CATEGORIES, FALLBACK_ROOM_IMAGE } from '../constants/initialData';
 import { Users, BedDouble, Maximize2, Sparkles, Check, ArrowRight, Eye, ShieldCheck } from 'lucide-react';
 
 interface RoomsSectionProps {
@@ -35,7 +36,7 @@ export const RoomsSection: React.FC<RoomsSectionProps> = ({ categories, onBookRo
 
         {/* Room Categories Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {categories.map((category) => {
+          {((categories && categories.length > 0) ? categories : DEFAULT_ROOM_CATEGORIES).map((category) => {
             const currentPhotoIdx = activePhotoIndex[category.id] || 0;
             const images = category.images && category.images.length > 0 ? category.images : [category.primary_image];
             const displayImage = images[currentPhotoIdx] || category.primary_image;
@@ -50,6 +51,14 @@ export const RoomsSection: React.FC<RoomsSectionProps> = ({ categories, onBookRo
                   <img
                     src={displayImage}
                     alt={category.name}
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src !== FALLBACK_ROOM_IMAGE) {
+                        target.src = FALLBACK_ROOM_IMAGE;
+                      }
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                   />
                   {/* Price Tag Overlay */}
@@ -79,7 +88,19 @@ export const RoomsSection: React.FC<RoomsSectionProps> = ({ categories, onBookRo
                           currentPhotoIdx === idx ? 'border-[#3D4534] ring-1 ring-[#3D4534]' : 'opacity-70 hover:opacity-100 border-transparent'
                         }`}
                       >
-                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <img
+                          src={img}
+                          alt=""
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            if (target.src !== FALLBACK_ROOM_IMAGE) {
+                              target.src = FALLBACK_ROOM_IMAGE;
+                            }
+                          }}
+                          className="w-full h-full object-cover"
+                        />
                       </button>
                     ))}
                   </div>
@@ -176,6 +197,14 @@ export const RoomsSection: React.FC<RoomsSectionProps> = ({ categories, onBookRo
                 <img
                   src={selectedModalCategory.primary_image}
                   alt={selectedModalCategory.name}
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    if (target.src !== FALLBACK_ROOM_IMAGE) {
+                      target.src = FALLBACK_ROOM_IMAGE;
+                    }
+                  }}
                   className="w-full h-full object-cover"
                 />
               </div>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { HotelSettings, RoomCategory } from '../types';
+import { DEFAULT_ROOM_CATEGORIES } from '../constants/initialData';
 import { Calendar, Users, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface HeroProps {
@@ -37,6 +38,13 @@ export const Hero: React.FC<HeroProps> = ({ hotel, categories, onCheckAvailabili
         <img
           src={hotel.hero_image || 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=2000&q=85'}
           alt="The Royal Palace Inn Architecture"
+          referrerPolicy="no-referrer"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (target.src !== 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=2000&q=85') {
+              target.src = 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=2000&q=85';
+            }
+          }}
           className="w-full h-full object-cover object-center filter brightness-[0.62] contrast-[1.05]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#1A1D1B] via-black/40 to-black/60" />
@@ -130,7 +138,7 @@ export const Hero: React.FC<HeroProps> = ({ hotel, categories, onCheckAvailabili
                 className="w-full bg-white border border-[#D5CDC0] rounded px-3 py-2.5 text-xs sm:text-sm text-[#232624] focus:outline-none focus:ring-1 focus:ring-[#3D4534] focus:border-[#3D4534]"
               >
                 <option value="">All 3 Categories</option>
-                {categories.map((c) => (
+                {((categories && categories.length > 0) ? categories : DEFAULT_ROOM_CATEGORIES).map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name} (from ₹{c.base_price.toLocaleString('en-IN')})
                   </option>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GalleryImage } from '../types';
+import { DEFAULT_GALLERY_IMAGES } from '../constants/initialData';
 import { Sparkles, Maximize2, ChevronLeft, ChevronRight, X } from 'lucide-react';
 
 interface GallerySectionProps {
@@ -10,9 +11,11 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ images }) => {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  const activeImages = (images && images.length > 0) ? images : DEFAULT_GALLERY_IMAGES;
+
   const filteredImages = selectedFilter === 'all'
-    ? images
-    : images.filter((img) => img.category === selectedFilter);
+    ? activeImages
+    : activeImages.filter((img) => img.category === selectedFilter);
 
   // Keyboard navigation for lightbox
   useEffect(() => {
@@ -82,6 +85,14 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ images }) => {
               <img
                 src={image.url}
                 alt={image.title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80') {
+                    target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80';
+                  }
+                }}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4 text-white">
@@ -120,6 +131,13 @@ export const GallerySection: React.FC<GallerySectionProps> = ({ images }) => {
               <img
                 src={filteredImages[lightboxIndex].url}
                 alt={filteredImages[lightboxIndex].title}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget;
+                  if (target.src !== 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80') {
+                    target.src = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80';
+                  }
+                }}
                 className="max-w-full max-h-[70vh] object-contain rounded shadow-2xl"
               />
               <div className="text-center mt-4 text-white">
