@@ -1,0 +1,6 @@
+{
+  "name": "The Royal Palace Inn",
+  "description": "Boutique hotel in India offering luxury accommodations, real-time availability, direct WhatsApp reservations, and boutique hospitality.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

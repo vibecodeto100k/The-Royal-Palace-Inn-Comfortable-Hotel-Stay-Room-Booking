@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-serif: 'Cormorant Garamond', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+  body {
+    font-family: var(--font-sans);
+    color: #232624;
+    background-color: #FBF9F5;
+  }
+  h1, h2, h3, .font-serif {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Subtle scrollbars and clean transitions */
+html {
+  scroll-behavior: smooth;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}
