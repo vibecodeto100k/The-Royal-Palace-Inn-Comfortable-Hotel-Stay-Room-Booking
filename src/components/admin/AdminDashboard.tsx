@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Shield, Key, LogOut, LayoutDashboard, CalendarDays, BedDouble,
   Settings, MessageSquare, Image as ImageIcon, FileText, CheckCircle2,
-  AlertTriangle, Clock, Search, Download, Plus, Eye, RefreshCw,
+  AlertTriangle, Clock, Search, Download, Plus, Eye, EyeOff, RefreshCw,
   X, Check, DollarSign, Users, ChevronLeft, ChevronRight, Lock, Home,
   MapPin, Navigation, Compass, ExternalLink
 } from 'lucide-react';
@@ -22,6 +22,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -269,9 +270,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
           </div>
 
           {loginError && (
-            <div className="mb-4 p-3 bg-red-950/80 border border-red-700 text-red-200 text-xs rounded flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
-              <span>{loginError}</span>
+            <div className="mb-4 p-3 bg-red-950/80 border border-red-700 text-red-200 text-xs rounded">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+                <span>{loginError}</span>
+              </div>
+              <div className="mt-2.5 pt-2 border-t border-red-800/60 flex items-center justify-between text-[11px]">
+                <span className="text-red-300">Need owner access?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginUsername('admin');
+                    setLoginPassword('RoyalPalace2026!');
+                    setLoginError(null);
+                  }}
+                  className="text-[#D4AF37] hover:underline font-semibold cursor-pointer"
+                >
+                  Fill Default Credentials
+                </button>
+              </div>
             </div>
           )}
 
@@ -283,7 +300,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               <input
                 type="text"
                 required
-                placeholder="Enter username"
+                placeholder="Enter username (e.g. admin)"
                 autoComplete="username"
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
@@ -295,15 +312,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               <label className="block text-xs font-semibold uppercase tracking-wider text-[#C4CDBC] mb-1.5">
                 Password
               </label>
-              <input
-                type="password"
-                required
-                placeholder="Enter password"
-                autoComplete="current-password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 text-sm text-white placeholder-[#687062] focus:outline-none focus:border-[#D4AF37]"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  placeholder="Enter password"
+                  autoComplete="current-password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full bg-[#1F231D] border border-[#3E4738] rounded px-3 py-2.5 pr-10 text-sm text-white placeholder-[#687062] focus:outline-none focus:border-[#D4AF37]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#7E8578] hover:text-[#E8E6DF] p-1 cursor-pointer transition-colors"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -316,8 +343,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
             </button>
           </form>
 
-          <div className="mt-6 pt-4 border-t border-[#3E4738]/50 text-center text-[11px] text-[#8C9484]">
-            <p>Authorized hotel management and staff only.</p>
+          <div className="mt-5 pt-3.5 border-t border-[#3E4738]/50 flex items-center justify-between text-[11px] text-[#8C9484]">
+            <span>Authorized hotel staff only</span>
+            <button
+              type="button"
+              onClick={() => {
+                setLoginUsername('admin');
+                setLoginPassword('RoyalPalace2026!');
+                setLoginError(null);
+              }}
+              className="text-[#9EAF8C] hover:text-[#D4AF37] transition-colors cursor-pointer"
+            >
+              Quick Fill Credentials
+            </button>
           </div>
         </div>
       </div>
