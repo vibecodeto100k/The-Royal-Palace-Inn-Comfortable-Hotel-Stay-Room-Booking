@@ -6,6 +6,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HotelSettings, RoomCategory, GalleryImage } from './types';
 import { DEFAULT_HOTEL_SETTINGS, DEFAULT_ROOM_CATEGORIES, DEFAULT_GALLERY_IMAGES } from './constants/initialData';
+import {
+  getClientHotelSettings,
+  saveClientHotelSettings,
+  getClientCategories,
+  saveClientCategories,
+  getClientGallery,
+  saveClientGallery
+} from './services/clientStorage';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { RoomsSection } from './components/RoomsSection';
@@ -27,10 +35,10 @@ export default function App() {
       : 'public';
   });
 
-  // Hotel data state (initialized with verified defaults so content & images always render on Vercel)
-  const [hotel, setHotel] = useState<HotelSettings>(DEFAULT_HOTEL_SETTINGS);
-  const [categories, setCategories] = useState<RoomCategory[]>(DEFAULT_ROOM_CATEGORIES);
-  const [gallery, setGallery] = useState<GalleryImage[]>(DEFAULT_GALLERY_IMAGES);
+  // Hotel data state (initialized with client storage or defaults so content & images always render on Vercel)
+  const [hotel, setHotel] = useState<HotelSettings>(() => getClientHotelSettings());
+  const [categories, setCategories] = useState<RoomCategory[]>(() => getClientCategories());
+  const [gallery, setGallery] = useState<GalleryImage[]>(() => getClientGallery());
   const [isLoading, setIsLoading] = useState(false);
 
   // Modals state
@@ -44,8 +52,14 @@ export default function App() {
   const [isLookupOpen, setIsLookupOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
-  // Fetch or re-fetch public data from the API
+  // Fetch or re-fetch public data from client storage & API
   const fetchPublicData = useCallback(async () => {
+    // 1. Immediately sync with local client storage (ensures edits in admin on Vercel reflect instantly)
+    setHotel(getClientHotelSettings());
+    setCategories(getClientCategories());
+    setGallery(getClientGallery());
+
+    // 2. Fetch from backend if available (e.g. running on Node server)
     try {
       const ts = Date.now();
       const [hotelRes, catsRes, galleryRes] = await Promise.all([
@@ -54,28 +68,31 @@ export default function App() {
         fetch(`/api/gallery?_t=${ts}`, { cache: 'no-store' }).catch(() => null)
       ]);
 
-      if (hotelRes && hotelRes.ok) {
+      if (hotelRes && hotelRes.ok && hotelRes.headers.get('content-type')?.includes('application/json')) {
         const hotelJson = await hotelRes.json().catch(() => null);
         if (hotelJson?.success && hotelJson.hotel) {
           setHotel(hotelJson.hotel);
+          saveClientHotelSettings(hotelJson.hotel, false);
         }
       }
 
-      if (catsRes && catsRes.ok) {
+      if (catsRes && catsRes.ok && catsRes.headers.get('content-type')?.includes('application/json')) {
         const catsJson = await catsRes.json().catch(() => null);
         if (catsJson?.success && Array.isArray(catsJson.categories) && catsJson.categories.length > 0) {
           setCategories(catsJson.categories);
+          saveClientCategories(catsJson.categories, false);
         }
       }
 
-      if (galleryRes && galleryRes.ok) {
+      if (galleryRes && galleryRes.ok && galleryRes.headers.get('content-type')?.includes('application/json')) {
         const galleryJson = await galleryRes.json().catch(() => null);
         if (galleryJson?.success && Array.isArray(galleryJson.images) && galleryJson.images.length > 0) {
           setGallery(galleryJson.images);
+          saveClientGallery(galleryJson.images, false);
         }
       }
     } catch (err) {
-      console.warn('Backend API unavailable; running on verified local presets:', err);
+      // Backend not available (Vercel static deploy); client storage is active
     } finally {
       setIsLoading(false);
     }

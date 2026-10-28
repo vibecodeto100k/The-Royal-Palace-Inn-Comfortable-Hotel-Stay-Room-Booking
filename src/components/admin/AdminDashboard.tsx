@@ -7,6 +7,7 @@ import {
   MapPin, Navigation, Compass, ExternalLink
 } from 'lucide-react';
 import { HotelSettings, RoomCategory, PhysicalRoom, Booking, RoomBlock, DashboardStats } from '../../types';
+import { validateClientLogin, handleClientFallbackRoute } from '../../services/clientStorage';
 
 interface AdminDashboardProps {
   onReturnToSite: () => void;
@@ -63,19 +64,30 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
     }
   };
 
-  // Helper fetch with Authorization
-  const authFetch = async (url: string, options: RequestInit = {}) => {
+  // Helper fetch with Authorization and automatic client fallback for static hosting
+  const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
     const headers = new Headers(options.headers || {});
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    const res = await fetch(url, { ...options, headers });
-    if (res.status === 401) {
-      setToken(null);
-      localStorage.removeItem('rpi_admin_token');
-      throw new Error('Session expired. Please log in again.');
+
+    try {
+      const res = await fetch(url, { ...options, headers });
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        if (res.status === 401) {
+          setToken(null);
+          localStorage.removeItem('rpi_admin_token');
+          throw new Error('Session expired. Please log in again.');
+        }
+        return res;
+      }
+    } catch (err: any) {
+      if (err.message === 'Session expired. Please log in again.') throw err;
     }
-    return res;
+
+    // Server returned non-JSON, empty, or is unreachable (e.g. running on Vercel static deployment)
+    return handleClientFallbackRoute(url, options);
   };
 
   // Verify auth on mount
@@ -84,7 +96,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
     authFetch('/api/admin/me')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success) {
+        if (data && data.success) {
           setCurrentUser(data.user);
         } else {
           setToken(null);
@@ -92,8 +104,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
         }
       })
       .catch(() => {
-        setToken(null);
-        localStorage.removeItem('rpi_admin_token');
+        if (token && token.startsWith('rpi-')) {
+          setCurrentUser({
+            id: 'admin-1',
+            username: 'admin',
+            name: 'Owner / General Manager',
+            role: 'admin'
+          });
+        } else {
+          setToken(null);
+          localStorage.removeItem('rpi_admin_token');
+        }
       });
   }, [token]);
 
@@ -148,32 +169,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   // Also load categories and rooms globally for modals
   useEffect(() => {
     if (!token) return;
-    authFetch('/api/admin/categories').then((r) => r.json()).then((d) => d.success && setCategories(d.categories));
-    authFetch('/api/admin/rooms').then((r) => r.json()).then((d) => d.success && setRooms(d.rooms));
+    authFetch('/api/admin/categories').then((r) => r.json()).then((d) => d && d.success && setCategories(d.categories));
+    authFetch('/api/admin/rooms').then((r) => r.json()).then((d) => d && d.success && setRooms(d.rooms));
   }, [token]);
 
-  // Handle Login
+  // Handle Login with safe server detection and resilient fallback
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
     setIsLoggingIn(true);
 
     try {
-      const res = await fetch('/api/admin/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword })
-      });
-      const data = await res.json();
+      let loginSuccess = false;
+      let userData: any = null;
+      let authToken: string | null = null;
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Authentication failed');
+      // 1. Try server login if backend endpoint is live
+      try {
+        const res = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: loginUsername, password: loginPassword })
+        });
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          if (res.ok && data.success) {
+            loginSuccess = true;
+            userData = data.user;
+            authToken = data.token;
+          } else if (data?.error) {
+            throw new Error(data.error);
+          }
+        }
+      } catch (err: any) {
+        // If server actively returned an error message (like bad password or rate limit), rethrow it
+        if (err.message && !err.message.includes('JSON') && !err.message.includes('fetch')) {
+          throw err;
+        }
       }
 
-      setToken(data.token);
-      localStorage.setItem('rpi_admin_token', data.token);
-      setCurrentUser(data.user);
-      showToast('Welcome back, ' + data.user.name);
+      // 2. Fallback to client authentication for static hosts (Vercel)
+      if (!loginSuccess) {
+        const clientAuth = validateClientLogin(loginUsername, loginPassword);
+        if (clientAuth.success) {
+          loginSuccess = true;
+          userData = clientAuth.user;
+          authToken = clientAuth.token!;
+        } else {
+          throw new Error(clientAuth.error || 'Invalid username or password');
+        }
+      }
+
+      if (loginSuccess && authToken && userData) {
+        setToken(authToken);
+        localStorage.setItem('rpi_admin_token', authToken);
+        setCurrentUser(userData);
+        showToast('Welcome back, ' + (userData.name || 'Admin'));
+      }
     } catch (err: any) {
       setLoginError(err.message || 'Invalid username or password');
     } finally {
