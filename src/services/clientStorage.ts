@@ -493,11 +493,42 @@ export function handleClientFallbackRoute(url: string, options: RequestInit = {}
 
   // /api/admin/change-password
   if (pathname === '/api/admin/change-password' && method === 'POST' && body) {
+    if (body.confirmPassword && body.newPassword !== body.confirmPassword) {
+      return jsonResponse({ success: false, error: 'New password and confirmation do not match' }, 400);
+    }
     const res = changeClientPassword(body.currentPassword, body.newPassword);
     if (res.success) {
-      return jsonResponse({ success: true, message: 'Password updated successfully' });
+      return jsonResponse({ success: true, message: 'Password updated successfully. Please log in again.', requireReauth: true });
     }
     return jsonResponse({ success: false, error: res.error || 'Password update failed' }, 400);
+  }
+
+  // /api/admin/upload - Fallback for static hosts
+  if (pathname === '/api/admin/upload' && method === 'POST' && body) {
+    const gallery = getClientGallery();
+    const newImg = {
+      id: 'gal-' + Date.now(),
+      title: body.title || 'Hotel Photograph',
+      category: body.category || 'rooms',
+      url: body.dataUrl || body.url,
+      caption: body.caption || '',
+      sort_order: gallery.length + 1
+    };
+    if (body.addToGallery || body.title) {
+      saveClientGallery([...gallery, newImg]);
+    }
+    return jsonResponse({ success: true, url: newImg.url, filename: body.filename || 'photo.jpg' });
+  }
+
+  // /api/admin/users
+  if (pathname === '/api/admin/users') {
+    return jsonResponse({
+      success: true,
+      users: [
+        { id: 'admin-1', username: 'admin', name: 'Owner / General Manager', role: 'owner', created_at: new Date().toISOString() },
+        { id: 'staff-1', username: 'frontdesk', name: 'Front Desk Concierge', role: 'staff', created_at: new Date().toISOString() }
+      ]
+    });
   }
 
   // /api/admin/audit-logs
@@ -505,7 +536,8 @@ export function handleClientFallbackRoute(url: string, options: RequestInit = {}
     return jsonResponse({
       success: true,
       logs: [
-        { id: 'log-1', action: 'SYSTEM_BOOT', details: 'Client storage engine ready', actor: 'system', created_at: new Date().toISOString() }
+        { id: 'log-1', action: 'SYSTEM_BOOT', details: 'Client storage engine ready for Theroyalpalaceinn', actor: 'system', created_at: new Date().toISOString() },
+        { id: 'log-2', action: 'BRAND_SYNC', details: 'Property brand set to Theroyalpalaceinn', actor: 'owner', created_at: new Date().toISOString() }
       ]
     });
   }

@@ -3,7 +3,7 @@ import { HotelSettings, RoomCategory, GalleryImage } from '../types';
 export const FALLBACK_ROOM_IMAGE = 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80';
 
 export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
-  hotel_name: 'The Royal Palace Inn',
+  hotel_name: 'Theroyalpalaceinn',
   tagline: 'An Intimate Heritage Sanctuary of Understated Luxury',
   description: 'An exclusive six-room boutique retreat designed for discerning travellers, couples, and families in Rajasthan.',
   address: '14, Heritage Palace Enclave, Civil Lines',
@@ -48,23 +48,23 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   whatsapp_settings: {
     mode: 'mode_a',
     phone: '917700869635',
-    template: `Hello The Royal Palace Inn,
+    template: `Hello Theroyalpalaceinn,
 
 I would like to request a room booking.
 
-Guest Name: {guest_name}
-Phone: {guest_phone}
-Room Category: {room_category}
-Number of Rooms: {rooms_count}
-Check-in: {check_in}
-Check-out: {check_out}
-Total Nights: {nights}
-Adults: {adults}
-Children: {children}
-Rate per Night: ₹{rate_per_night}
-Estimated Total: ₹{estimated_total}
-Special Requests: {special_requests}
-Booking Reference: {booking_reference}
+Guest Name: {{guest_name}}
+Phone: {{guest_phone}}
+Room Category: {{room_type}}
+Number of Rooms: {{room_count}}
+Check-in: {{check_in}}
+Check-out: {{check_out}}
+Total Nights: {{nights}}
+Adults: {{adults}}
+Children: {{children}}
+Rate per Night: ₹{{price_per_night}}
+Estimated Total: ₹{{estimated_total}}
+Special Requests: {{special_requests}}
+Booking Reference: {{booking_reference}}
 
 Please confirm room availability and the final payable amount.
 

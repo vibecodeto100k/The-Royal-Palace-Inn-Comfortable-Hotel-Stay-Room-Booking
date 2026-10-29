@@ -20,7 +20,7 @@ export const LocationContactSection: React.FC<LocationContactProps> = ({ hotel }
   const mapsApiKey = (import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
 
   // Basic contact and formatting
-  const hotelName = hotel.hotel_name || 'The Royal Palace Inn';
+  const hotelName = hotel.hotel_name || 'Theroyalpalaceinn';
   const cleanPhone = (hotel.phone || '+91 7700 869 635').replace(/\s+/g, '');
   const cleanWa = hotel.whatsapp_normalized || '917700869635';
   const formattedWaDisplay = `+${cleanWa.slice(0, 2)} ${cleanWa.slice(2, 6)} ${cleanWa.slice(6, 9)} ${cleanWa.slice(9)}`;

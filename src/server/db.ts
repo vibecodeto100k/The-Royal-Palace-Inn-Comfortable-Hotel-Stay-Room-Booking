@@ -172,9 +172,9 @@ function seedInitialData() {
 
   // 2. Seed Hotel Settings
   const defaultSettings: Record<string, string> = {
-    hotel_name: 'The Royal Palace Inn',
+    hotel_name: 'Theroyalpalaceinn',
     tagline: 'An Intimate Heritage Sanctuary of Understated Luxury',
-    description: 'The Royal Palace Inn is an exclusive six-room boutique retreat designed for discerning travellers, couples, and families. Immersed in tranquil courtyard gardens and refined Indian heritage, we offer bespoke hospitality, authentic culinary experiences, and calm sanctuary away from the bustling city.',
+    description: 'Theroyalpalaceinn is an exclusive six-room boutique retreat designed for discerning travellers, couples, and families. Immersed in tranquil courtyard gardens and refined Indian heritage, we offer bespoke hospitality, authentic culinary experiences, and calm sanctuary away from the bustling city.',
     address: '14, Heritage Palace Enclave, Civil Lines',
     city: 'Jaipur',
     state: 'Rajasthan',
@@ -199,7 +199,7 @@ function seedInitialData() {
     hero_subheadline: 'An intimate 6-room sanctuary in Rajasthan, thoughtfully curated for tranquil stays, bespoke service, and authentic Indian hospitality.',
     hero_image: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=2000&q=85',
     cancellation_policy: 'Free cancellation up to 48 hours prior to check-in (14:00 local time). Cancellations made within 48 hours will be subject to a fee equal to the first night room charge.',
-    house_rules: 'Government-approved photo identification (Aadhaar, Passport, or Driving License) is mandatory for all adult guests at check-in. The Royal Palace Inn is a quiet sanctuary; peaceful hours are observed from 22:00 to 07:00.',
+    house_rules: 'Government-approved photo identification (Aadhaar, Passport, or Driving License) is mandatory for all adult guests at check-in. Theroyalpalaceinn is a quiet sanctuary; peaceful hours are observed from 22:00 to 07:00.',
     facilities_json: JSON.stringify([
       'Complimentary High-Speed Fibre Wi-Fi',
       'Artisanal Fresh Breakfast & In-Room Dining',
@@ -234,23 +234,23 @@ function seedInitialData() {
     whatsapp_settings_json: JSON.stringify({
       mode: 'mode_a',
       phone: '917700869635',
-      template: `Hello The Royal Palace Inn,
+      template: `Hello Theroyalpalaceinn,
 
 I would like to request a room booking.
 
-Guest Name: {guest_name}
-Phone: {guest_phone}
-Room Category: {room_category}
-Number of Rooms: {num_rooms}
-Check-in: {check_in}
-Check-out: {check_out}
-Total Nights: {nights}
-Adults: {adults}
-Children: {children}
-Rate per Night: ₹{rate_per_night}
-Estimated Total: ₹{estimated_total}
-Special Requests: {special_requests}
-Booking Reference: {booking_reference}
+Guest Name: {{guest_name}}
+Phone: {{guest_phone}}
+Room Category: {{room_type}}
+Number of Rooms: {{room_count}}
+Check-in: {{check_in}}
+Check-out: {{check_out}}
+Total Nights: {{nights}}
+Adults: {{adults}}
+Children: {{children}}
+Rate per Night: ₹{{price_per_night}}
+Estimated Total: ₹{{estimated_total}}
+Special Requests: {{special_requests}}
+Booking Reference: {{booking_reference}}
 
 Please confirm room availability and the final payable amount.
 
@@ -269,6 +269,9 @@ Thank you.`,
       insertSetting.run(key, value);
     }
   }
+
+  // Ensure hotel name is updated to Theroyalpalaceinn
+  db.prepare("UPDATE hotel_settings SET value = 'Theroyalpalaceinn' WHERE key = 'hotel_name' AND (value = 'The Royal Palace Inn' OR value = '')").run();
 
   // 3. Seed Room Categories (3 categories specified in prompt)
   const catCheck = db.prepare('SELECT count(*) as count FROM room_categories').get() as { count: number };

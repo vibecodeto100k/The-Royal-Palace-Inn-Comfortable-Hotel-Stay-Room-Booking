@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({
                 RP
               </div>
               <span className="font-serif text-xl font-bold tracking-wide text-[#FBF9F5]">
-                {hotel.hotel_name || 'The Royal Palace Inn'}
+                {hotel.hotel_name || 'Theroyalpalaceinn'}
               </span>
             </div>
             <p className="text-xs text-[#8A9482] leading-relaxed">
@@ -118,7 +118,7 @@ export const Footer: React.FC<FooterProps> = ({
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#6B7563]">
           <div>
-            &copy; {new Date().getFullYear()} {hotel.hotel_name || 'The Royal Palace Inn'}. All rights reserved.
+            &copy; {new Date().getFullYear()} {hotel.hotel_name || 'Theroyalpalaceinn'}. All rights reserved.
           </div>
 
           <div className="flex items-center gap-4">

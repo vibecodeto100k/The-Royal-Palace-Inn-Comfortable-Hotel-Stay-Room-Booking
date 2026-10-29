@@ -4,7 +4,9 @@ import {
   Settings, MessageSquare, Image as ImageIcon, FileText, CheckCircle2,
   AlertTriangle, Clock, Search, Download, Plus, Eye, EyeOff, RefreshCw,
   X, Check, DollarSign, Users, ChevronLeft, ChevronRight, Lock, Home,
-  MapPin, Navigation, Compass, ExternalLink
+  MapPin, Navigation, Compass, ExternalLink, Menu, Sliders, Sparkles,
+  Smartphone, Monitor, Tablet, Upload, Trash2, ArrowUp, ArrowDown,
+  Layers, Globe, Palette, CheckCircle, ChevronDown
 } from 'lucide-react';
 import { HotelSettings, RoomCategory, PhysicalRoom, Booking, RoomBlock, DashboardStats } from '../../types';
 import { validateClientLogin, handleClientFallbackRoute } from '../../services/clientStorage';
@@ -19,6 +21,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('rpi_admin_token'));
   const [currentUser, setCurrentUser] = useState<any | null>(null);
 
+  // Layout states: Collapsible sidebar on desktop and mobile drawer
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('rpi_sidebar_collapsed') === 'true';
+  });
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
+
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -27,7 +35,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Active Tab
-  const [activeTab, setActiveTab] = useState<'overview' | 'bookings' | 'rooms' | 'categories' | 'calendar' | 'settings' | 'whatsapp' | 'gallery' | 'audit'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'customizer' | 'bookings' | 'rooms' | 'categories' | 'calendar' | 'gallery' | 'settings' | 'whatsapp' | 'audit'>('overview');
 
   // Core Data States
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -50,6 +58,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   const [newBlockModalOpen, setNewBlockModalOpen] = useState(false);
   const [changePasswordModalOpen, setChangePasswordModalOpen] = useState(false);
   const [newPhotoModalOpen, setNewPhotoModalOpen] = useState(false);
+
+  // Customizer state
+  const [customizerSubTab, setCustomizerSubTab] = useState<'branding' | 'homepage' | 'sections' | 'layout' | 'preview'>('branding');
+  const [customizerDevice, setCustomizerDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [customizerDraft, setCustomizerDraft] = useState<any>(null);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
 
   // Feedback notifications
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -145,10 +159,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
         const res = await authFetch(`/api/admin/calendar?month=${calendarMonth}`);
         const data = await res.json();
         if (data.success) setCalendarData(data);
-      } else if (activeTab === 'settings' || activeTab === 'whatsapp') {
+      } else if (activeTab === 'settings' || activeTab === 'whatsapp' || activeTab === 'customizer') {
         const res = await authFetch('/api/admin/settings');
         const data = await res.json();
-        if (data.success) setSettings(data.settings);
+        if (data.success) {
+          setSettings(data.settings);
+        }
+        if (activeTab === 'customizer') {
+          const galRes = await authFetch('/api/admin/gallery');
+          const galData = await galRes.json();
+          if (galData && galData.success) setGallery(galData.images);
+        }
       } else if (activeTab === 'gallery') {
         const res = await authFetch('/api/admin/gallery');
         const data = await res.json();
@@ -173,6 +194,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
     authFetch('/api/admin/categories').then((r) => r.json()).then((d) => d && d.success && setCategories(d.categories));
     authFetch('/api/admin/rooms').then((r) => r.json()).then((d) => d && d.success && setRooms(d.rooms));
   }, [token]);
+
+  useEffect(() => {
+    if (settings) {
+      setCustomizerDraft((prev: any) => prev || JSON.parse(JSON.stringify(settings)));
+    }
+  }, [settings]);
 
   // Handle Login with safe server detection and resilient fallback
   const handleLogin = async (e: React.FormEvent) => {
@@ -262,7 +289,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               RP
             </div>
             <h2 className="font-serif text-2xl font-bold tracking-wide">
-              The Royal Palace Inn
+              Theroyalpalaceinn
             </h2>
             <p className="text-xs text-[#A8B29F] mt-1">
               Secure Owner &amp; Reservation Management Portal
@@ -365,8 +392,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
   // ==========================================
   // RENDER AUTHENTICATED ADMIN DASHBOARD
   // ==========================================
+  const navTabs = [
+    { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard, badge: stats?.occupiedToday ? `${stats.occupiedToday}/6` : undefined },
+    { id: 'customizer', label: 'Website Customizer', icon: Palette, badge: 'Live' },
+    { id: 'bookings', label: 'Bookings & Enquiries', icon: FileText, badge: stats?.pendingEnquiries ? String(stats.pendingEnquiries) : undefined },
+    { id: 'rooms', label: 'Physical Rooms (6)', icon: BedDouble },
+    { id: 'categories', label: 'Suites & Rates', icon: DollarSign },
+    { id: 'calendar', label: 'Occupancy Calendar', icon: CalendarDays },
+    { id: 'gallery', label: 'Media & Photographs', icon: ImageIcon },
+    { id: 'settings', label: 'Location & Profile', icon: MapPin },
+    { id: 'whatsapp', label: 'WhatsApp & Payments', icon: MessageSquare },
+    { id: 'audit', label: 'Security Audit Trail', icon: Shield }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#F4F1EA] text-[#232624] flex flex-col font-sans">
+    <div className="min-h-screen bg-[#F4F1EA] text-[#232624] flex font-sans">
       {/* Toast Notification */}
       {toastMsg && (
         <div
@@ -381,83 +421,290 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
         </div>
       )}
 
-      {/* Admin Top Header */}
-      <header className="bg-[#2D3328] text-white border-b border-[#3D4534] px-4 sm:px-8 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
-            RP
-          </div>
-          <div>
-            <h1 className="font-serif text-lg font-bold leading-none tracking-wide">
-              The Royal Palace Inn &bull; Owner Portal
-            </h1>
-            <span className="text-[10px] text-[#A6AF9E] block mt-0.5">
-              6 Physical Rooms &bull; Real-Time Inventory Control
-            </span>
+      {/* MOBILE NAVIGATION DRAWER OVERLAY */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#272D23] text-white z-50 flex flex-col shadow-2xl p-4">
+            <div className="flex items-center justify-between pb-4 border-b border-[#384232] mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
+                  RP
+                </div>
+                <div>
+                  <h2 className="font-serif text-base font-bold tracking-wide leading-tight text-white">
+                    Theroyalpalaceinn
+                  </h2>
+                  <span className="text-[10px] text-[#A6AF9E]">Owner Portal</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileDrawerOpen(false)}
+                className="p-1.5 text-[#A6AF9E] hover:text-white rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-3 px-2 py-1.5 rounded bg-[#1F241C] border border-[#343D2E] text-[11px] text-[#A6AF9E] flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>6 Physical Rooms &bull; Live</span>
+            </div>
+
+            <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
+              {navTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id as any);
+                      setMobileDrawerOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded text-xs transition-colors text-left ${
+                      isActive
+                        ? 'bg-[#3D4534] text-white font-semibold'
+                        : 'text-[#B8C2AD] hover:bg-[#32392C] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4 shrink-0 text-[#D4AF37]" />
+                      <span>{tab.label}</span>
+                    </div>
+                    {tab.badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-[#1F241C] text-[#E8EFE0] font-mono">
+                        {tab.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="pt-3 border-t border-[#384232] space-y-2 text-xs">
+              <button
+                onClick={() => {
+                  setMobileDrawerOpen(false);
+                  onReturnToSite();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded bg-[#32392C] hover:bg-[#3D4534] text-[#E8EFE0]"
+              >
+                <Home className="w-4 h-4 text-[#D4AF37]" />
+                <span>View Customer Website</span>
+              </button>
+              <button
+                onClick={() => {
+                  setMobileDrawerOpen(false);
+                  setChangePasswordModalOpen(true);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded bg-[#32392C] hover:bg-[#3D4534] text-[#E8EFE0]"
+              >
+                <Key className="w-4 h-4 text-[#D4AF37]" />
+                <span>Change Password</span>
+              </button>
+              <button
+                onClick={() => {
+                  setMobileDrawerOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded bg-red-950/60 hover:bg-red-900 text-red-200"
+              >
+                <LogOut className="w-4 h-4 text-red-400" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3 text-xs">
+      {/* DESKTOP COLLAPSIBLE SIDEBAR */}
+      <aside
+        className={`hidden lg:flex flex-col bg-[#272D23] text-white border-r border-[#384232] transition-all duration-300 z-30 shrink-0 sticky top-0 h-screen ${
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        }`}
+      >
+        {/* Sidebar Brand Header */}
+        <div className="p-4 border-b border-[#384232] flex items-center justify-between gap-2 min-h-[68px]">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944] shrink-0">
+              RP
+            </div>
+            {!isSidebarCollapsed && (
+              <div className="truncate">
+                <h1 className="font-serif text-sm font-bold tracking-wide leading-tight truncate text-white">
+                  Theroyalpalaceinn
+                </h1>
+                <span className="text-[10px] text-[#A6AF9E] block truncate">
+                  Owner Management
+                </span>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              const next = !isSidebarCollapsed;
+              setIsSidebarCollapsed(next);
+              localStorage.setItem('rpi_sidebar_collapsed', String(next));
+            }}
+            title={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="p-1.5 text-[#A6AF9E] hover:text-white hover:bg-[#32392C] rounded transition-colors"
+          >
+            {isSidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        </div>
+
+        {/* Property Status Pill */}
+        {!isSidebarCollapsed && (
+          <div className="mx-3 my-2.5 px-2.5 py-1.5 rounded bg-[#1F241C] border border-[#343D2E] text-[11px] text-[#A6AF9E] flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>6 Physical Rooms</span>
+            </span>
+            <span className="text-[10px] uppercase font-semibold text-emerald-400">Active</span>
+          </div>
+        )}
+
+        {/* Navigation Tab Links */}
+        <nav className="flex-1 px-2.5 py-2 space-y-1 overflow-y-auto scrollbar-thin">
+          {navTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                title={isSidebarCollapsed ? tab.label : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-xs transition-colors relative group ${
+                  isActive
+                    ? 'bg-[#3D4534] text-white font-semibold shadow-sm'
+                    : 'text-[#B8C2AD] hover:bg-[#32392C] hover:text-white'
+                } ${isSidebarCollapsed ? 'justify-center' : 'justify-between'}`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#D4AF37]' : 'text-[#8F9988] group-hover:text-white'}`} />
+                  {!isSidebarCollapsed && <span className="truncate">{tab.label}</span>}
+                </div>
+                {!isSidebarCollapsed && tab.badge && (
+                  <span className="px-1.5 py-0.2 text-[10px] rounded-full bg-[#1F241C] text-[#E8EFE0] font-mono">
+                    {tab.badge}
+                  </span>
+                )}
+                {isSidebarCollapsed && (
+                  <span className="absolute left-full ml-2 px-2 py-1 bg-black/90 text-white text-[11px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-md">
+                    {tab.label}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer Controls */}
+        <div className="p-3 border-t border-[#384232] space-y-1.5 text-xs">
           <button
             onClick={onReturnToSite}
-            className="hidden sm:flex items-center gap-1.5 bg-[#3D4534] hover:bg-[#4E5942] text-[#E8EFE0] px-3 py-1.5 rounded transition-colors"
+            title={isSidebarCollapsed ? 'Public Customer Website' : undefined}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded bg-[#32392C] hover:bg-[#3D4534] text-[#E8EFE0] transition-colors ${
+              isSidebarCollapsed ? 'justify-center' : ''
+            }`}
           >
-            <Home className="w-3.5 h-3.5" />
-            <span>Public Website</span>
+            <Home className="w-4 h-4 text-[#D4AF37] shrink-0" />
+            {!isSidebarCollapsed && <span>Public Website</span>}
           </button>
 
           <button
             onClick={() => setChangePasswordModalOpen(true)}
-            className="flex items-center gap-1.5 text-[#BCC5B4] hover:text-white px-2 py-1 transition-colors"
+            title={isSidebarCollapsed ? 'Change Admin Password' : undefined}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-[#A6AF9E] hover:text-white hover:bg-[#32392C] transition-colors ${
+              isSidebarCollapsed ? 'justify-center' : ''
+            }`}
           >
-            <Key className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Change Password</span>
+            <Key className="w-4 h-4 shrink-0" />
+            {!isSidebarCollapsed && <span>Change Password</span>}
           </button>
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-1.5 bg-red-900/60 hover:bg-red-800 text-red-200 px-3 py-1.5 rounded transition-colors"
+            title={isSidebarCollapsed ? 'Logout' : undefined}
+            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded text-red-300 hover:text-white hover:bg-red-950/60 transition-colors ${
+              isSidebarCollapsed ? 'justify-center' : ''
+            }`}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
+            <LogOut className="w-4 h-4 shrink-0 text-red-400" />
+            {!isSidebarCollapsed && <span>Logout</span>}
           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* Navigation Sub-Header Tabs */}
-      <nav className="bg-[#3D4534] text-[#D8E0CF] px-4 sm:px-8 border-b border-[#4E5943] overflow-x-auto flex gap-1 text-xs font-medium">
-        {[
-          { id: 'overview', label: 'Dashboard Overview', icon: LayoutDashboard },
-          { id: 'bookings', label: 'Bookings & Enquiries', icon: FileText },
-          { id: 'rooms', label: 'Physical Rooms (6)', icon: BedDouble },
-          { id: 'categories', label: 'Categories & Rates', icon: DollarSign },
-          { id: 'calendar', label: 'Occupancy Calendar', icon: CalendarDays },
-          { id: 'settings', label: 'Hotel Profile & Website', icon: Settings },
-          { id: 'whatsapp', label: 'WhatsApp & Payments', icon: MessageSquare },
-          { id: 'gallery', label: 'Photo Gallery', icon: ImageIcon },
-          { id: 'audit', label: 'Audit Trail', icon: Shield }
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
+      {/* MAIN CONTENT WRAPPER */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top Header Bar */}
+        <header className="bg-[#2D3328] text-white border-b border-[#3D4534] px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 sticky top-0 z-20">
+          <div className="flex items-center gap-3">
+            {/* Mobile menu trigger */}
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 py-3 px-3.5 border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                isActive
-                  ? 'border-[#D4AF37] text-white font-semibold bg-[#32392B]'
-                  : 'border-transparent text-[#B8C2AD] hover:text-white hover:bg-[#384030]'
-              }`}
+              onClick={() => setMobileDrawerOpen(true)}
+              className="lg:hidden p-1.5 text-[#BCC5B4] hover:text-white hover:bg-[#3D4534] rounded"
+              title="Open menu"
             >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{tab.label}</span>
+              <Menu className="w-5 h-5" />
             </button>
-          );
-        })}
-      </nav>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center gap-2.5">
+              <span className="font-serif text-lg sm:text-xl font-bold tracking-wide">
+                Theroyalpalaceinn
+              </span>
+              <span className="hidden sm:inline-block text-[#8F9988]">&bull;</span>
+              <span className="hidden sm:inline-block text-xs text-[#A6AF9E]">
+                6 Physical Rooms &bull; Real-Time Inventory
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3 text-xs">
+            <button
+              onClick={onReturnToSite}
+              className="flex items-center gap-1.5 bg-[#3D4534] hover:bg-[#4E5942] text-[#E8EFE0] px-3 py-1.5 rounded transition-colors shadow-sm"
+              title="Return to customer site"
+            >
+              <Home className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Preview Website</span>
+            </button>
+
+            <button
+              onClick={() => setChangePasswordModalOpen(true)}
+              className="hidden md:flex items-center gap-1.5 text-[#BCC5B4] hover:text-white px-2.5 py-1.5 rounded hover:bg-[#3D4534] transition-colors"
+            >
+              <Key className="w-3.5 h-3.5" />
+              <span>Change Password</span>
+            </button>
+
+            <div className="h-4 w-px bg-[#3D4534] hidden sm:block" />
+
+            <div className="hidden lg:flex items-center gap-2 text-xs text-[#C8CEBF]">
+              <span className="w-6 h-6 rounded-full bg-[#3D4534] flex items-center justify-center font-bold text-[11px] text-[#D4AF37]">
+                OP
+              </span>
+              <span>{currentUser?.name || 'Owner Portal'}</span>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 bg-red-950/60 hover:bg-red-900 text-red-200 px-3 py-1.5 rounded transition-colors"
+              title="Logout from admin"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         {/* ==================================================== */}
         {/* TAB 1: OVERVIEW & ANALYTICS                          */}
         {/* ==================================================== */}
@@ -629,7 +876,563 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
         )}
 
         {/* ==================================================== */}
-        {/* TAB 2: BOOKINGS & ENQUIRIES                          */}
+        {/* TAB 2: VISUAL WEBSITE CUSTOMIZER                     */}
+        {/* ==================================================== */}
+        {activeTab === 'customizer' && customizerDraft && (
+          <div className="space-y-6">
+            {/* Customizer Top Header */}
+            <div className="bg-white border border-[#DDD6C8] rounded-lg p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#3D4534] mb-1">
+                  <Palette className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <span>No-Code Website Studio</span>
+                </div>
+                <h2 className="font-serif text-2xl font-normal text-[#232624]">
+                  Visual Website Customizer
+                </h2>
+                <p className="text-xs text-[#687062] mt-0.5">
+                  Update branding, hero presentation, homepage section order, and styles. Unsaved changes preview live below.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm('Discard all unsaved edits and revert to published settings?')) {
+                      setCustomizerDraft(JSON.parse(JSON.stringify(settings)));
+                      showToast('Unsaved edits discarded');
+                    }
+                  }}
+                  className="px-3 py-2 border border-[#C8C0B2] text-[#444C3E] hover:bg-[#EFECE4] rounded text-xs font-semibold uppercase tracking-wider"
+                >
+                  Discard Edits
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem('rpi_customizer_draft', JSON.stringify(customizerDraft));
+                    showToast('Draft saved locally');
+                  }}
+                  className="px-3.5 py-2 border border-[#3D4534] text-[#3D4534] hover:bg-[#3D4534] hover:text-white rounded text-xs font-semibold uppercase tracking-wider transition-colors"
+                >
+                  Save Draft
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isPublishing}
+                  onClick={async () => {
+                    setIsPublishing(true);
+                    try {
+                      const res = await authFetch('/api/admin/settings', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(customizerDraft)
+                      });
+                      const d = await res.json();
+                      if (!res.ok || !d.success) throw new Error(d.error || 'Failed to publish settings');
+
+                      setSettings(JSON.parse(JSON.stringify(customizerDraft)));
+                      showToast('Website published successfully! Changes are now live on public site.');
+                      notifyChange();
+                    } catch (err: any) {
+                      showToast(err.message || 'Failed to publish website', 'error');
+                    } finally {
+                      setIsPublishing(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#3D4534] hover:bg-[#2C3226] text-white rounded text-xs font-semibold uppercase tracking-wider shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
+                  <span>{isPublishing ? 'Publishing...' : 'Publish to Live Site'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Customizer Sub-Nav Tabs */}
+            <div className="flex border-b border-[#D5CDC0] gap-1 overflow-x-auto text-xs font-medium">
+              {[
+                { id: 'branding', label: 'Branding & Identity', icon: Sliders },
+                { id: 'homepage', label: 'Hero & Messaging', icon: Sparkles },
+                { id: 'sections', label: 'Sections & Ordering', icon: Layers },
+                { id: 'layout', label: 'Layout & Typography', icon: Globe },
+                { id: 'preview', label: 'Live Device Preview', icon: Monitor }
+              ].map((sub) => {
+                const Icon = sub.icon;
+                const isCur = customizerSubTab === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => setCustomizerSubTab(sub.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2.5 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                      isCur
+                        ? 'border-[#3D4534] text-[#3D4534] font-semibold bg-white'
+                        : 'border-transparent text-[#687062] hover:text-[#232624] hover:bg-[#EFECE4]'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 text-[#D4AF37]" />
+                    <span>{sub.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* SUB-TAB 1: BRANDING & IDENTITY */}
+            {customizerSubTab === 'branding' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-[#DDD6C8] shadow-sm text-xs">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Hotel Brand Name
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.hotel_name || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, hotel_name: e.target.value })}
+                      placeholder="Theroyalpalaceinn"
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs font-serif font-bold text-sm text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                    <span className="text-[10px] text-[#788072] mt-0.5 block">
+                      Appears in top navigation, browser title, and guest booking confirmation.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Brand Tagline
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.tagline || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, tagline: e.target.value })}
+                      placeholder="An Intimate Heritage Sanctuary of Understated Luxury"
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Hotel Monogram Logo (1-3 letters)
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={3}
+                      value={customizerDraft.monogram || 'RP'}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, monogram: e.target.value.toUpperCase() })}
+                      className="w-24 bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs font-serif font-bold text-center text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Property Description &amp; Heritage Story
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={customizerDraft.description || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, description: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-2">
+                      Primary Theme Accent Color
+                    </label>
+                    <div className="grid grid-cols-5 gap-2 mb-3">
+                      {[
+                        { name: 'Royal Olive', hex: '#3D4534' },
+                        { name: 'Imperial Gold', hex: '#D4AF37' },
+                        { name: 'Heritage Charcoal', hex: '#232624' },
+                        { name: 'Terracotta Earth', hex: '#8C5238' },
+                        { name: 'Deep Forest', hex: '#1C3322' }
+                      ].map((c) => (
+                        <button
+                          key={c.hex}
+                          type="button"
+                          onClick={() => setCustomizerDraft({ ...customizerDraft, theme_primary_color: c.hex })}
+                          className={`p-2 rounded border text-center transition-all ${
+                            (customizerDraft.theme_primary_color || '#3D4534') === c.hex
+                              ? 'border-black ring-2 ring-[#3D4534]/50 font-bold'
+                              : 'border-[#DDD6C8] hover:border-[#888]'
+                          }`}
+                        >
+                          <div className="w-full h-7 rounded mb-1 shadow-inner" style={{ backgroundColor: c.hex }} />
+                          <span className="text-[9px] block text-[#444C3E] truncate">{c.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-[#FAF9F6] border border-[#E6E0D5] rounded-md space-y-3">
+                    <span className="font-semibold text-xs text-[#3D4534] block">Live Brand Preview Badge</span>
+                    <div className="flex items-center gap-3 p-3 bg-[#272D23] text-white rounded">
+                      <div className="w-10 h-10 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
+                        {customizerDraft.monogram || 'RP'}
+                      </div>
+                      <div>
+                        <div className="font-serif text-base font-bold tracking-wide">
+                          {customizerDraft.hotel_name || 'Theroyalpalaceinn'}
+                        </div>
+                        <div className="text-[10px] text-[#A6AF9E] truncate">
+                          {customizerDraft.tagline || 'Boutique Hotel'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 2: HERO & HOMEPAGE MESSAGING */}
+            {customizerSubTab === 'homepage' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-[#DDD6C8] shadow-sm text-xs">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Hero Main Headline
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.hero_headline || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, hero_headline: e.target.value })}
+                      placeholder="Where Timeless Heritage Meets Quiet Luxury"
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs font-serif text-sm text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Hero Subheadline &amp; Intro Paragraph
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={customizerDraft.hero_subheadline || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, hero_subheadline: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs text-[#232624] focus:outline-none focus:border-[#3D4534]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-[#444C3E] mb-1">
+                        Primary CTA Button Text
+                      </label>
+                      <input
+                        type="text"
+                        value={customizerDraft.hero_primary_cta || 'Book Your Stay'}
+                        onChange={(e) => setCustomizerDraft({ ...customizerDraft, hero_primary_cta: e.target.value })}
+                        className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-[#444C3E] mb-1">
+                        Secondary CTA Button Text
+                      </label>
+                      <input
+                        type="text"
+                        value={customizerDraft.hero_secondary_cta || 'WhatsApp Reservations'}
+                        onChange={(e) => setCustomizerDraft({ ...customizerDraft, hero_secondary_cta: e.target.value })}
+                        className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Hero Background Image URL
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.hero_image || ''}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, hero_image: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <label className="block font-semibold text-[#444C3E] mb-1">
+                    Or Choose Hero Image from Uploaded Hotel Photos
+                  </label>
+                  <div className="grid grid-cols-3 gap-2.5 max-h-72 overflow-y-auto p-2 border border-[#E5DFD3] rounded bg-[#FAF9F6]">
+                    {gallery.map((img) => (
+                      <div
+                        key={img.id}
+                        onClick={() => setCustomizerDraft({ ...customizerDraft, hero_image: img.url })}
+                        className={`aspect-[4/3] rounded overflow-hidden cursor-pointer border-2 transition-all relative ${
+                          customizerDraft.hero_image === img.url
+                            ? 'border-[#D4AF37] ring-2 ring-[#D4AF37]'
+                            : 'border-transparent hover:border-[#888]'
+                        }`}
+                      >
+                        <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        {customizerDraft.hero_image === img.url && (
+                          <div className="absolute inset-0 bg-[#3D4534]/40 flex items-center justify-center text-white">
+                            <Check className="w-5 h-5 text-[#D4AF37]" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {customizerDraft.hero_image && (
+                    <div className="aspect-video w-full rounded-md overflow-hidden relative border border-[#DDD6C8] shadow-sm">
+                      <img src={customizerDraft.hero_image} alt="Hero Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 p-4 flex flex-col justify-end text-white">
+                        <span className="font-serif text-lg font-bold leading-tight">{customizerDraft.hero_headline}</span>
+                        <span className="text-[11px] text-white/80 line-clamp-1">{customizerDraft.hero_subheadline}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 3: SECTIONS & ORDERING */}
+            {customizerSubTab === 'sections' && (
+              <div className="bg-white p-6 rounded-lg border border-[#DDD6C8] shadow-sm text-xs space-y-4">
+                <div>
+                  <h3 className="font-serif text-base font-bold text-[#232624]">
+                    Homepage Section Visibility &amp; Flow
+                  </h3>
+                  <p className="text-xs text-[#687062]">
+                    Toggle individual sections on or off to tailor the customer journey.
+                  </p>
+                </div>
+
+                <div className="space-y-2.5 max-w-2xl">
+                  {[
+                    { key: 'show_dates_search', title: 'Arrival & Departure Date Availability Bar', desc: 'Instant date selector widget on hero section' },
+                    { key: 'show_suites_section', title: 'Suites & Room Categories (3 Categories)', desc: 'Displays Superior King Suite, Deluxe Double, and Luxury Quadruple' },
+                    { key: 'show_amenities_section', title: 'Heritage Comforts & Facilities Grid', desc: 'Courtyard, Breakfast, Marble Baths, Fibre Wi-Fi' },
+                    { key: 'show_gallery_section', title: 'Visual Hotel Photograph Gallery', desc: 'Curated photo showcase of guest rooms and architecture' },
+                    { key: 'show_location_section', title: 'Our Location, Google Maps & Directions', desc: 'Interactive Google Map, directions link, and Civil Lines enclave details' },
+                    { key: 'show_whatsapp_float', title: 'Floating Direct WhatsApp Action Button', desc: 'Sticky quick reservation button (+91 7700 869 635)' }
+                  ].map((sec) => {
+                    const isVisible = customizerDraft[sec.key] !== false;
+                    return (
+                      <div
+                        key={sec.key}
+                        className="flex items-center justify-between p-3.5 bg-[#FAF9F6] border border-[#E5DFD3] rounded-md"
+                      >
+                        <div>
+                          <strong className="block text-xs text-[#232624]">{sec.title}</strong>
+                          <span className="text-[11px] text-[#71786A]">{sec.desc}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCustomizerDraft({ ...customizerDraft, [sec.key]: !isVisible })}
+                          className={`px-3 py-1.5 rounded text-xs font-semibold uppercase tracking-wider transition-colors ${
+                            isVisible
+                              ? 'bg-[#3D4534] text-white'
+                              : 'bg-[#DDD6C8] text-[#666D5F]'
+                          }`}
+                        >
+                          {isVisible ? 'Visible' : 'Hidden'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 4: LAYOUT & TYPOGRAPHY */}
+            {customizerSubTab === 'layout' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-[#DDD6C8] shadow-sm text-xs">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Typography Preset
+                    </label>
+                    <select
+                      value={customizerDraft.font_preset || 'playfair'}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, font_preset: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                    >
+                      <option value="playfair">Playfair Display &amp; Sans (Classic Heritage)</option>
+                      <option value="cormorant">Cormorant Garamond &amp; Inter (Quiet Royal)</option>
+                      <option value="cinzel">Cinzel &amp; Montserrat (Palatial Majestic)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Button Corners Style
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'square', label: 'Classic Sharp (0px)' },
+                        { id: 'subtle', label: 'Refined (4px)' },
+                        { id: 'pill', label: 'Soft Pill (9999px)' }
+                      ].map((b) => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          onClick={() => setCustomizerDraft({ ...customizerDraft, button_radius: b.id })}
+                          className={`p-2.5 border rounded text-center transition-all ${
+                            (customizerDraft.button_radius || 'subtle') === b.id
+                              ? 'border-[#3D4534] bg-[#3D4534]/10 font-bold text-[#3D4534]'
+                              : 'border-[#DDD6C8] text-[#555E50]'
+                          }`}
+                        >
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Website Announcement Header Bar
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.announcement_bar || 'Intimate 6-Room Boutique Sanctuary'}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, announcement_bar: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-[#444C3E] mb-1">
+                      Footer Copyright Text
+                    </label>
+                    <input
+                      type="text"
+                      value={customizerDraft.footer_text || 'Understated luxury, heritage tranquility, and bespoke Indian hospitality.'}
+                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, footer_text: e.target.value })}
+                      className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 5: LIVE VIEWPORT PREVIEW */}
+            {customizerSubTab === 'preview' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-[#DDD6C8]">
+                  <span className="text-xs font-semibold text-[#3D4534]">
+                    Interactive Device Viewport
+                  </span>
+                  <div className="flex items-center gap-1 bg-[#FAF9F6] p-1 rounded border border-[#DDD6C8]">
+                    <button
+                      type="button"
+                      onClick={() => setCustomizerDevice('desktop')}
+                      className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 ${
+                        customizerDevice === 'desktop' ? 'bg-[#3D4534] text-white font-semibold' : 'text-[#687062]'
+                      }`}
+                    >
+                      <Monitor className="w-3.5 h-3.5" />
+                      <span>Desktop</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomizerDevice('tablet')}
+                      className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 ${
+                        customizerDevice === 'tablet' ? 'bg-[#3D4534] text-white font-semibold' : 'text-[#687062]'
+                      }`}
+                    >
+                      <Tablet className="w-3.5 h-3.5" />
+                      <span>Tablet (768px)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomizerDevice('mobile')}
+                      className={`px-3 py-1.5 rounded text-xs flex items-center gap-1.5 ${
+                        customizerDevice === 'mobile' ? 'bg-[#3D4534] text-white font-semibold' : 'text-[#687062]'
+                      }`}
+                    >
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>Mobile (375px)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scaled Preview Frame */}
+                <div className="flex justify-center bg-[#232624]/20 p-4 rounded-lg overflow-x-auto">
+                  <div
+                    className={`bg-[#FBF9F5] border border-[#DDD6C8] rounded shadow-2xl transition-all duration-300 overflow-hidden ${
+                      customizerDevice === 'desktop'
+                        ? 'w-full max-w-5xl'
+                        : customizerDevice === 'tablet'
+                        ? 'w-[768px]'
+                        : 'w-[375px]'
+                    }`}
+                  >
+                    {/* Simulated Header */}
+                    <div className="bg-[#2D3328] text-white p-2.5 px-4 text-xs flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded bg-[#3D4534] flex items-center justify-center font-serif font-bold text-[11px] border border-[#4F5944]">
+                          {customizerDraft.monogram || 'RP'}
+                        </div>
+                        <span className="font-serif font-bold">{customizerDraft.hotel_name || 'Theroyalpalaceinn'}</span>
+                      </div>
+                      <span className="text-[10px] text-[#A6AF9E]">Direct WhatsApp: +91 7700 869 635</span>
+                    </div>
+
+                    {/* Simulated Hero */}
+                    <div className="relative min-h-[260px] bg-black flex items-center justify-center text-center p-6 text-white overflow-hidden">
+                      {customizerDraft.hero_image && (
+                        <img
+                          src={customizerDraft.hero_image}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover opacity-60"
+                        />
+                      )}
+                      <div className="relative z-10 max-w-lg space-y-2">
+                        <span className="text-[10px] uppercase tracking-widest text-[#D4AF37] font-semibold">
+                          {customizerDraft.announcement_bar || 'Intimate 6-Room Boutique Sanctuary'}
+                        </span>
+                        <h2 className="font-serif text-2xl font-bold leading-tight">
+                          {customizerDraft.hero_headline || 'Where Timeless Heritage Meets Quiet Luxury'}
+                        </h2>
+                        <p className="text-xs text-white/80 line-clamp-2">
+                          {customizerDraft.hero_subheadline || 'An intimate 6-room sanctuary in Rajasthan.'}
+                        </p>
+                        <div className="pt-2 flex justify-center gap-2">
+                          <span className="bg-[#3D4534] text-white text-[11px] px-3.5 py-1.5 rounded font-semibold uppercase">
+                            {customizerDraft.hero_primary_cta || 'Book Your Stay'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Simulated Room Cards Grid */}
+                    <div className="p-4 sm:p-6 bg-[#FAF9F6]">
+                      <div className="text-center mb-4">
+                        <span className="text-[10px] uppercase font-bold text-[#3D4534] tracking-widest">Accommodations</span>
+                        <h3 className="font-serif text-lg font-bold text-[#232624]">3 Curated Suite Categories</h3>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {categories.map((c) => (
+                          <div key={c.id} className="bg-white rounded border border-[#DDD6C8] overflow-hidden p-2.5">
+                            <div className="aspect-[4/3] bg-black rounded overflow-hidden mb-2">
+                              <img src={c.primary_image} alt="" className="w-full h-full object-cover" />
+                            </div>
+                            <h4 className="font-serif font-bold text-xs text-[#232624]">{c.name}</h4>
+                            <span className="text-xs font-bold text-[#3D4534] block mt-0.5">₹{c.base_price?.toLocaleString('en-IN')} / night</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* TAB 3: BOOKINGS & ENQUIRIES                          */}
         {/* ==================================================== */}
         {activeTab === 'bookings' && (
           <div className="space-y-5">
@@ -1700,51 +2503,244 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 className="font-serif text-2xl font-normal text-[#232624]">
-                  Photo Gallery Manager
+                  Media &amp; Photograph Library
                 </h2>
                 <p className="text-xs text-[#687062]">
-                  Add, view, and organize photographs displayed on the public gallery.
+                  Upload hotel photographs, set hero presentation banners, and assign gallery photos to room categories.
                 </p>
               </div>
 
               <button
                 onClick={() => setNewPhotoModalOpen(true)}
-                className="bg-[#3D4534] hover:bg-[#2C3226] text-white px-3.5 py-2 rounded text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5"
+                className="bg-[#3D4534] hover:bg-[#2C3226] text-white px-3.5 py-2 rounded text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add Photograph</span>
+                <span>Upload Photograph</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Quick Upload Box */}
+            <div className="bg-white border border-[#DDD6C8] rounded-lg p-5 shadow-sm">
+              <span className="font-serif text-sm font-bold text-[#232624] block mb-1">
+                Direct File Upload to Hotel Server
+              </span>
+              <p className="text-xs text-[#687062] mb-3">
+                Upload room photographs directly from your computer. Stored persistently on server disk.
+              </p>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const form = e.target as HTMLFormElement;
+                  const fileInput = form.elements.namedItem('fileUpload') as HTMLInputElement;
+                  const titleInput = form.elements.namedItem('uploadTitle') as HTMLInputElement;
+                  const categorySelect = form.elements.namedItem('uploadCategory') as HTMLSelectElement;
+                  const captionInput = form.elements.namedItem('uploadCaption') as HTMLInputElement;
+
+                  if (!fileInput.files || fileInput.files.length === 0) {
+                    showToast('Please select an image file to upload', 'error');
+                    return;
+                  }
+
+                  const file = fileInput.files[0];
+                  if (file.size > 10 * 1024 * 1024) {
+                    showToast('File exceeds 10MB limit', 'error');
+                    return;
+                  }
+
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    const dataUrl = reader.result as string;
+                    try {
+                      const res = await authFetch('/api/admin/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          filename: file.name,
+                          dataUrl,
+                          title: titleInput.value || file.name.replace(/\.[^/.]+$/, ''),
+                          category: categorySelect.value || 'rooms',
+                          caption: captionInput.value || '',
+                          addToGallery: true
+                        })
+                      });
+                      const d = await res.json();
+                      if (!res.ok || !d.success) throw new Error(d.error || 'Failed to upload photo');
+
+                      showToast('Photo uploaded and added to gallery!');
+                      notifyChange();
+                      form.reset();
+                      loadData();
+                    } catch (err: any) {
+                      showToast(err.message || 'Upload failed', 'error');
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end text-xs"
+              >
+                <div>
+                  <label className="block font-semibold text-[#444C3E] mb-1">Select File</label>
+                  <input
+                    type="file"
+                    name="fileUpload"
+                    accept="image/*"
+                    required
+                    className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-2.5 py-1.5 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-[#3D4534] file:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#444C3E] mb-1">Title</label>
+                  <input
+                    type="text"
+                    name="uploadTitle"
+                    placeholder="e.g. Superior King Bedroom"
+                    className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#444C3E] mb-1">Category</label>
+                  <select name="uploadCategory" className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs">
+                    <option value="rooms">Suites &amp; Rooms</option>
+                    <option value="courtyard">Courtyard &amp; Gardens</option>
+                    <option value="dining">Dining Veranda</option>
+                    <option value="exterior">Architecture &amp; Facade</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-[#444C3E] mb-1">Alt Text / Caption</label>
+                  <input
+                    type="text"
+                    name="uploadCaption"
+                    placeholder="e.g. Handcrafted wooden bed with linen"
+                    className="w-full bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <button
+                    type="submit"
+                    className="w-full bg-[#3D4534] hover:bg-[#2C3226] text-white py-2 rounded text-xs font-semibold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Upload to Server</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Gallery Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {gallery.map((img) => (
-                <div key={img.id} className="bg-white border border-[#DDD6C8] rounded overflow-hidden shadow-sm flex flex-col">
+                <div key={img.id} className="bg-white border border-[#DDD6C8] rounded-lg overflow-hidden shadow-sm flex flex-col">
                   <div className="aspect-[4/3] bg-black overflow-hidden relative">
-                    <img src={img.url} alt="" className="w-full h-full object-cover" />
-                    <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded uppercase">
+                    <img src={img.url} alt={img.title} className="w-full h-full object-cover" />
+                    <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded uppercase font-medium">
                       {img.category}
                     </span>
+                    {settings?.hero_image === img.url && (
+                      <span className="absolute top-2 right-2 bg-[#D4AF37] text-[#232624] text-[10px] px-2 py-0.5 rounded font-bold uppercase shadow">
+                        Current Hero
+                      </span>
+                    )}
                   </div>
-                  <div className="p-3 flex-1 flex flex-col justify-between">
+
+                  <div className="p-3.5 flex-1 flex flex-col justify-between text-xs space-y-3">
                     <div>
-                      <h4 className="font-serif font-medium text-sm text-[#232624]">{img.title}</h4>
+                      <h4 className="font-serif font-bold text-sm text-[#232624]">{img.title}</h4>
                       {img.caption && <p className="text-[11px] text-[#71786A] mt-0.5 line-clamp-1">{img.caption}</p>}
+                      <div className="mt-1 text-[10px] text-[#889082] font-mono truncate">{img.url}</div>
                     </div>
 
-                    <button
-                      onClick={async () => {
-                        if (!confirm(`Delete photo "${img.title}"?`)) return;
-                        const res = await authFetch(`/api/admin/gallery/${img.id}`, { method: 'DELETE' });
-                        if (res.ok) {
-                          showToast('Photo removed from gallery');
-                          notifyChange();
-                          loadData();
-                        }
-                      }}
-                      className="mt-3 text-red-600 hover:text-red-800 text-[11px] font-semibold text-left underline"
-                    >
-                      Delete Photo
-                    </button>
+                    <div className="pt-2 border-t border-[#ECE7DC] space-y-2">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const updatedSettings = { ...settings, hero_image: img.url };
+                              const res = await authFetch('/api/admin/settings', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(updatedSettings)
+                              });
+                              const d = await res.json();
+                              if (d.success) {
+                                setSettings(updatedSettings);
+                                showToast('Set as website hero image!');
+                                notifyChange();
+                              }
+                            } catch (e: any) {
+                              showToast(e.message, 'error');
+                            }
+                          }}
+                          className="flex-1 px-2.5 py-1.5 rounded bg-[#FAF9F6] border border-[#DDD6C8] hover:bg-[#3D4534] hover:text-white text-[#444C3E] text-[11px] font-semibold transition-colors text-center"
+                        >
+                          Set as Hero Image
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(img.url);
+                            showToast('Photo URL copied to clipboard');
+                          }}
+                          className="px-2 py-1.5 rounded bg-[#FAF9F6] border border-[#DDD6C8] hover:bg-[#EFECE4] text-[#444C3E] text-[11px]"
+                          title="Copy Image URL"
+                        >
+                          Copy URL
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-[#788072]">Assign to Suite:</span>
+                        <select
+                          onChange={async (e) => {
+                            const catId = e.target.value;
+                            if (!catId) return;
+                            const targetCat = categories.find((c) => c.id === catId);
+                            if (!targetCat) return;
+                            try {
+                              const updatedCat = { ...targetCat, primary_image: img.url };
+                              await authFetch(`/api/admin/categories/${catId}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(updatedCat)
+                              });
+                              showToast(`Assigned as primary photo for ${targetCat.name}!`);
+                              notifyChange();
+                            } catch (e: any) {
+                              showToast(e.message, 'error');
+                            }
+                          }}
+                          defaultValue=""
+                          className="bg-[#FAF9F6] border border-[#DDD6C8] rounded px-2 py-1 text-[11px]"
+                        >
+                          <option value="" disabled>Choose Room...</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Are you sure you want to delete "${img.title}"? This cannot be undone.`)) return;
+                          const res = await authFetch(`/api/admin/gallery/${img.id}`, { method: 'DELETE' });
+                          if (res.ok) {
+                            showToast('Photo removed from gallery');
+                            notifyChange();
+                            loadData();
+                          }
+                        }}
+                        className="w-full text-red-600 hover:text-red-800 text-[11px] font-semibold text-center pt-1 block"
+                      >
+                        Delete Photo
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -1794,7 +2790,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
             </div>
           </div>
         )}
-      </main>
+        </main>
+      </div>
 
       {/* ==================================================== */}
       {/* MODAL: MANAGE & ASSIGN BOOKING                       */}
@@ -2350,8 +3347,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
       {/* MODAL: CHANGE ADMIN PASSWORD                         */}
       {/* ==================================================== */}
       {changePasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#FBF9F5] border border-[#DDD6C8] rounded-lg max-w-sm w-full p-6 relative shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-[#FBF9F5] border border-[#DDD6C8] rounded-lg max-w-md w-full p-6 sm:p-7 relative shadow-2xl">
             <button
               onClick={() => setChangePasswordModalOpen(false)}
               className="absolute top-4 right-4 text-xl font-bold text-[#687062] hover:text-[#232624]"
@@ -2359,9 +3356,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               &times;
             </button>
 
-            <h3 className="font-serif text-xl font-bold text-[#232624] mb-3">
-              Change Admin Password
-            </h3>
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-full bg-[#3D4534] text-[#E8E6DF] flex items-center justify-center">
+                <Lock className="w-4 h-4" />
+              </div>
+              <h3 className="font-serif text-xl font-bold text-[#232624]">
+                Change Admin Password
+              </h3>
+            </div>
+            <p className="text-xs text-[#687062] mb-4">
+              Update credentials for Theroyalpalaceinn owner &amp; management dashboard.
+            </p>
 
             <form
               onSubmit={async (e) => {
@@ -2369,40 +3374,106 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
                 const form = e.target as HTMLFormElement;
                 const cur = (form.elements.namedItem('currentPassword') as HTMLInputElement).value;
                 const next = (form.elements.namedItem('newPassword') as HTMLInputElement).value;
+                const confirm = (form.elements.namedItem('confirmPassword') as HTMLInputElement).value;
+
+                if (next !== confirm) {
+                  showToast('New passwords do not match. Please re-check.', 'error');
+                  return;
+                }
+
+                if (next.length < 8) {
+                  showToast('New password must be at least 8 characters.', 'error');
+                  return;
+                }
+
+                const hasLetters = /[a-zA-Z]/.test(next);
+                const hasNumbersOrSpecial = /[\d!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(next);
+                if (!hasLetters || !hasNumbersOrSpecial) {
+                  showToast('Password must contain letters and at least one number or symbol.', 'error');
+                  return;
+                }
 
                 try {
                   const res = await authFetch('/api/admin/change-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ currentPassword: cur, newPassword: next })
+                    body: JSON.stringify({ currentPassword: cur, newPassword: next, confirmPassword: confirm })
                   });
                   const d = await res.json();
                   if (!res.ok || !d.success) throw new Error(d.error || 'Failed to update password');
 
-                  showToast('Password updated successfully!');
+                  showToast('Password changed successfully! Keep it recorded safely.');
                   setChangePasswordModalOpen(false);
                 } catch (err: any) {
-                  showToast(err.message, 'error');
+                  showToast(err.message || 'Failed to change password', 'error');
                 }
               }}
-              className="space-y-3 text-xs"
+              className="space-y-3.5 text-xs"
             >
               <div>
                 <label className="block font-semibold text-[#444C3E] mb-1">Current Password</label>
-                <input type="password" name="currentPassword" required className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs" />
+                <input
+                  type="password"
+                  name="currentPassword"
+                  required
+                  placeholder="Enter current password"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#3D4534]"
+                />
               </div>
 
               <div>
-                <label className="block font-semibold text-[#444C3E] mb-1">New Password (Min 8 chars)</label>
-                <input type="password" name="newPassword" minLength={8} required className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs" />
+                <label className="block font-semibold text-[#444C3E] mb-1">
+                  New Password <span className="text-[#889082] font-normal">(Min 8 chars, letters &amp; numbers/symbols)</span>
+                </label>
+                <input
+                  type="password"
+                  name="newPassword"
+                  minLength={8}
+                  required
+                  placeholder="Enter strong new password"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#3D4534]"
+                />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-[#3D4534] hover:bg-[#2C3226] text-white py-2.5 rounded text-xs font-semibold uppercase tracking-wider mt-2"
-              >
-                Update Password
-              </button>
+              <div>
+                <label className="block font-semibold text-[#444C3E] mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  minLength={8}
+                  required
+                  placeholder="Re-enter new password"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs focus:outline-none focus:border-[#3D4534]"
+                />
+              </div>
+
+              <div className="p-2.5 bg-[#FAF8F5] border border-[#E5DFD3] rounded text-[11px] text-[#636C5D] space-y-1">
+                <div className="font-semibold text-[#3D4534]">Security requirements:</div>
+                <div className="flex items-center gap-1.5 text-emerald-800">
+                  <Check className="w-3 h-3 text-emerald-600" />
+                  <span>Minimum 8 characters length</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-emerald-800">
+                  <Check className="w-3 h-3 text-emerald-600" />
+                  <span>Mix of letters and numbers/symbols</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChangePasswordModalOpen(false)}
+                  className="flex-1 border border-[#DDD6C8] hover:bg-[#EFECE4] text-[#444C3E] py-2.5 rounded text-xs font-semibold uppercase"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#3D4534] hover:bg-[#2C3226] text-white py-2.5 rounded text-xs font-semibold uppercase tracking-wider"
+                >
+                  Save New Password
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -2429,24 +3500,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               onSubmit={async (e) => {
                 e.preventDefault();
                 const form = e.target as HTMLFormElement;
+                const fileInput = form.elements.namedItem('photoFile') as HTMLInputElement;
                 const title = (form.elements.namedItem('title') as HTMLInputElement).value;
                 const url = (form.elements.namedItem('url') as HTMLInputElement).value;
                 const category = (form.elements.namedItem('category') as HTMLSelectElement).value;
                 const caption = (form.elements.namedItem('caption') as HTMLInputElement).value;
 
                 try {
-                  const res = await authFetch('/api/admin/gallery', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title, url, category, caption })
-                  });
-                  const d = await res.json();
-                  if (!res.ok || !d.success) throw new Error(d.error || 'Failed to add photo');
+                  if (fileInput.files && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    const reader = new FileReader();
+                    reader.onload = async () => {
+                      const dataUrl = reader.result as string;
+                      const res = await authFetch('/api/admin/upload', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          filename: file.name,
+                          dataUrl,
+                          title: title || file.name.replace(/\.[^/.]+$/, ''),
+                          category: category || 'rooms',
+                          caption: caption || '',
+                          addToGallery: true
+                        })
+                      });
+                      const d = await res.json();
+                      if (!res.ok || !d.success) throw new Error(d.error || 'Failed to upload photo');
 
-                  showToast('Photo added to gallery!');
-                  notifyChange();
-                  setNewPhotoModalOpen(false);
-                  loadData();
+                      showToast('Photo uploaded to server and added to gallery!');
+                      notifyChange();
+                      setNewPhotoModalOpen(false);
+                      loadData();
+                    };
+                    reader.readAsDataURL(file);
+                  } else if (url && url.trim().length > 0) {
+                    const res = await authFetch('/api/admin/gallery', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ title, url, category, caption })
+                    });
+                    const d = await res.json();
+                    if (!res.ok || !d.success) throw new Error(d.error || 'Failed to add photo');
+
+                    showToast('Photo added to gallery!');
+                    notifyChange();
+                    setNewPhotoModalOpen(false);
+                    loadData();
+                  } else {
+                    showToast('Please either select an image file or enter an image URL', 'error');
+                  }
                 } catch (err: any) {
                   showToast(err.message, 'error');
                 }
@@ -2454,13 +3556,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               className="space-y-3 text-xs"
             >
               <div>
-                <label className="block font-semibold text-[#444C3E] mb-1">Photo Title</label>
-                <input type="text" name="title" required placeholder="e.g. Deluxe Suite Bedroom" className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs" />
+                <label className="block font-semibold text-[#444C3E] mb-1">
+                  Option 1: Upload File from Computer
+                </label>
+                <input
+                  type="file"
+                  name="photoFile"
+                  accept="image/*"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-2.5 py-1.5 text-xs file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[11px] file:bg-[#3D4534] file:text-white"
+                />
               </div>
 
               <div>
-                <label className="block font-semibold text-[#444C3E] mb-1">Image URL</label>
-                <input type="url" name="url" required placeholder="https://..." className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs" />
+                <label className="block font-semibold text-[#444C3E] mb-1">
+                  Option 2: Or Paste Image URL
+                </label>
+                <input
+                  type="url"
+                  name="url"
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-[#444C3E] mb-1">Photo Title</label>
+                <input
+                  type="text"
+                  name="title"
+                  required
+                  placeholder="e.g. Deluxe Suite Bedroom"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                />
               </div>
 
               <div>
@@ -2474,15 +3601,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
               </div>
 
               <div>
-                <label className="block font-semibold text-[#444C3E] mb-1">Caption / Description</label>
-                <input type="text" name="caption" placeholder="Short description" className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs" />
+                <label className="block font-semibold text-[#444C3E] mb-1">Caption / Alt Description</label>
+                <input
+                  type="text"
+                  name="caption"
+                  placeholder="Short description for guests"
+                  className="w-full bg-white border border-[#DDD6C8] rounded px-3 py-2 text-xs"
+                />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#3D4534] hover:bg-[#2C3226] text-white py-2.5 rounded text-xs font-semibold uppercase tracking-wider mt-2"
+                className="w-full bg-[#3D4534] hover:bg-[#2C3226] text-white py-2.5 rounded text-xs font-semibold uppercase tracking-wider mt-2 shadow-sm"
               >
-                Upload Photo
+                Save Photograph
               </button>
             </form>
           </div>

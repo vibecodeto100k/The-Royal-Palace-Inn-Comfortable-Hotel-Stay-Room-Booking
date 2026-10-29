@@ -102,9 +102,9 @@ export default function App() {
   useEffect(() => {
     if (currentView === 'public') {
       fetchPublicData();
-      document.title = (hotel?.hotel_name || 'The Royal Palace Inn') + ' | Boutique Heritage Hotel';
+      document.title = (hotel?.hotel_name || 'Theroyalpalaceinn') + ' | Boutique Heritage Hotel';
     } else {
-      document.title = 'Owner Portal | ' + (hotel?.hotel_name || 'The Royal Palace Inn');
+      document.title = 'Owner Portal | ' + (hotel?.hotel_name || 'Theroyalpalaceinn');
     }
   }, [currentView, hotel?.hotel_name, fetchPublicData]);
 

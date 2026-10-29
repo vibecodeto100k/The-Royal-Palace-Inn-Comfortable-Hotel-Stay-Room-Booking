@@ -89,7 +89,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
           <div>
             <span className="font-serif text-xl sm:text-2xl font-bold tracking-wide text-[#232624] block leading-none">
-              {hotel.hotel_name || 'The Royal Palace Inn'}
+              {hotel.hotel_name || 'Theroyalpalaceinn'}
             </span>
             <span className="text-[10px] sm:text-xs text-[#6B7265] uppercase tracking-widest font-sans font-medium block mt-1">
               Boutique Hotel &bull; 6 Exclusive Rooms
