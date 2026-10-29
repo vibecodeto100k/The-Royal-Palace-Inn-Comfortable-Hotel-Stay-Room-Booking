@@ -84,9 +84,17 @@ export const Navbar: React.FC<NavbarProps> = ({
       <nav className="max-w-7xl mx-auto px-4 sm:px-8 py-3.5 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <a href="#" className="flex items-center gap-3 group text-left">
-          <div className="w-10 h-10 rounded-sm bg-[#3D4534] text-[#E8E6DF] flex items-center justify-center font-serif text-xl font-bold tracking-wider shadow-sm group-hover:bg-[#2D3328] transition-colors border border-[#4F5944]">
-            RP
-          </div>
+          {hotel.logo_url ? (
+            <img
+              src={hotel.logo_url}
+              alt={hotel.hotel_name || 'Theroyalpalaceinn'}
+              className="h-10 w-auto max-w-[140px] object-contain rounded-sm shadow-sm group-hover:opacity-90 transition-opacity"
+            />
+          ) : (
+            <div className="w-10 h-10 rounded-sm bg-[#3D4534] text-[#E8E6DF] flex items-center justify-center font-serif text-xl font-bold tracking-wider shadow-sm group-hover:bg-[#2D3328] transition-colors border border-[#4F5944]">
+              {hotel.monogram || 'RP'}
+            </div>
+          )}
           <div>
             <span className="font-serif text-xl sm:text-2xl font-bold tracking-wide text-[#232624] block leading-none">
               {hotel.hotel_name || 'Theroyalpalaceinn'}

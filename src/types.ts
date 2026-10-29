@@ -2,6 +2,8 @@ export interface HotelSettings {
   hotel_name: string;
   tagline: string;
   description: string;
+  logo_url?: string;
+  monogram?: string;
   address: string;
   city: string;
   state: string;

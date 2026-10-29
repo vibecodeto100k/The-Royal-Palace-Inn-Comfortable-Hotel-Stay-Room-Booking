@@ -25,9 +25,17 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-sm bg-[#3D4534] text-[#E8E6DF] flex items-center justify-center font-serif text-lg font-bold border border-[#4F5944]">
-                RP
-              </div>
+              {hotel.logo_url ? (
+                <img
+                  src={hotel.logo_url}
+                  alt={hotel.hotel_name || 'Theroyalpalaceinn'}
+                  className="h-8 w-auto max-w-[120px] object-contain rounded-sm"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-sm bg-[#3D4534] text-[#E8E6DF] flex items-center justify-center font-serif text-lg font-bold border border-[#4F5944]">
+                  {hotel.monogram || 'RP'}
+                </div>
+              )}
               <span className="font-serif text-xl font-bold tracking-wide text-[#FBF9F5]">
                 {hotel.hotel_name || 'Theroyalpalaceinn'}
               </span>

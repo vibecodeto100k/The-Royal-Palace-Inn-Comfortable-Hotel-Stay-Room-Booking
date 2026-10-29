@@ -6,6 +6,8 @@ export const DEFAULT_HOTEL_SETTINGS: HotelSettings = {
   hotel_name: 'Theroyalpalaceinn',
   tagline: 'An Intimate Heritage Sanctuary of Understated Luxury',
   description: 'An exclusive six-room boutique retreat designed for discerning travellers, couples, and families in Rajasthan.',
+  logo_url: '',
+  monogram: 'RP',
   address: '14, Heritage Palace Enclave, Civil Lines',
   city: 'Jaipur',
   state: 'Rajasthan',

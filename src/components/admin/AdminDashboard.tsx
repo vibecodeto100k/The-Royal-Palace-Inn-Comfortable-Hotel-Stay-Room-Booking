@@ -431,9 +431,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
           <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#272D23] text-white z-50 flex flex-col shadow-2xl p-4">
             <div className="flex items-center justify-between pb-4 border-b border-[#384232] mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
-                  RP
-                </div>
+                {settings?.logo_url ? (
+                  <img
+                    src={settings.logo_url}
+                    alt="Logo"
+                    className="w-9 h-9 object-contain rounded bg-[#3D4534] border border-[#4F5944] shrink-0"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944] shrink-0">
+                    {settings?.monogram || 'RP'}
+                  </div>
+                )}
                 <div>
                   <h2 className="font-serif text-base font-bold tracking-wide leading-tight text-white">
                     Theroyalpalaceinn
@@ -530,9 +538,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
         {/* Sidebar Brand Header */}
         <div className="p-4 border-b border-[#384232] flex items-center justify-between gap-2 min-h-[68px]">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944] shrink-0">
-              RP
-            </div>
+            {settings?.logo_url ? (
+              <img
+                src={settings.logo_url}
+                alt="Logo"
+                className="w-9 h-9 object-contain rounded bg-[#3D4534] border border-[#4F5944] shrink-0"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944] shrink-0">
+                {settings?.monogram || 'RP'}
+              </div>
+            )}
             {!isSidebarCollapsed && (
               <div className="truncate">
                 <h1 className="font-serif text-sm font-bold tracking-wide leading-tight truncate text-white">
@@ -1012,17 +1028,129 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
                     />
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-[#444C3E] mb-1">
-                      Hotel Monogram Logo (1-3 letters)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={3}
-                      value={customizerDraft.monogram || 'RP'}
-                      onChange={(e) => setCustomizerDraft({ ...customizerDraft, monogram: e.target.value.toUpperCase() })}
-                      className="w-24 bg-[#FAF9F6] border border-[#DDD6C8] rounded px-3 py-2 text-xs font-serif font-bold text-center text-[#232624] focus:outline-none focus:border-[#3D4534]"
-                    />
+                  {/* Hotel Logo & Emblem Customization */}
+                  <div className="p-3.5 bg-[#FAF9F6] border border-[#DDD6C8] rounded-md space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-semibold text-[#444C3E]">
+                        Hotel Logo &amp; Crest Customization
+                      </label>
+                      <span className="text-[10px] text-[#788072]">
+                        PNG, SVG, or JPG
+                      </span>
+                    </div>
+
+                    {/* Current Logo Preview & Status */}
+                    {customizerDraft.logo_url ? (
+                      <div className="flex items-center gap-3 p-2.5 bg-white border border-[#DDD6C8] rounded">
+                        <div className="w-14 h-14 bg-[#232624] rounded flex items-center justify-center p-1 border border-[#3E4738] shrink-0">
+                          <img
+                            src={customizerDraft.logo_url}
+                            alt="Hotel Logo"
+                            className="max-h-full max-w-full object-contain"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[11px] font-semibold text-[#232624] block truncate">
+                            Active Custom Logo Image
+                          </span>
+                          <span className="text-[10px] text-[#788072] block truncate font-mono">
+                            {customizerDraft.logo_url}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCustomizerDraft({ ...customizerDraft, logo_url: '' })}
+                            className="mt-1 text-red-600 hover:text-red-800 text-[10px] font-semibold underline cursor-pointer"
+                          >
+                            Remove Logo &amp; Use Monogram
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2.5 p-2 bg-[#EFECE4] rounded text-[11px] text-[#636C5D]">
+                        <div className="w-8 h-8 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-xs border border-[#4F5944] shrink-0">
+                          {customizerDraft.monogram || 'RP'}
+                        </div>
+                        <span>Currently using text monogram initials <strong>{customizerDraft.monogram || 'RP'}</strong>. Upload a logo image below to replace it.</span>
+                      </div>
+                    )}
+
+                    {/* Direct File Upload */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#444C3E] mb-1">
+                        Upload Logo File from Device
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            showToast('Logo file size exceeds 5MB limit', 'error');
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = async () => {
+                            const dataUrl = reader.result as string;
+                            try {
+                              const res = await authFetch('/api/admin/upload', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  filename: `logo_${file.name}`,
+                                  dataUrl,
+                                  title: 'Hotel Brand Logo',
+                                  category: 'branding',
+                                  addToGallery: false
+                                })
+                              });
+                              const d = await res.json();
+                              if (!res.ok || !d.success) throw new Error(d.error || 'Failed to upload logo');
+
+                              setCustomizerDraft({ ...customizerDraft, logo_url: d.url });
+                              showToast('Logo uploaded and applied to draft!');
+                            } catch (err: any) {
+                              showToast(err.message || 'Upload failed', 'error');
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                        className="w-full bg-white border border-[#DDD6C8] rounded px-2.5 py-1.5 text-xs file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-[11px] file:bg-[#3D4534] file:text-white file:cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Image URL Input */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#444C3E] mb-1">
+                        Or Enter Logo Image URL
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://.../hotel-logo.png"
+                        value={customizerDraft.logo_url || ''}
+                        onChange={(e) => setCustomizerDraft({ ...customizerDraft, logo_url: e.target.value })}
+                        className="w-full bg-white border border-[#DDD6C8] rounded px-2.5 py-1.5 text-xs font-mono text-[#232624]"
+                      />
+                    </div>
+
+                    {/* Fallback Monogram */}
+                    <div className="pt-2 border-t border-[#DDD6C8] flex items-center justify-between gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[#444C3E]">
+                          Fallback Monogram (1-3 letters)
+                        </label>
+                        <span className="text-[10px] text-[#788072]">
+                          Used whenever image logo is absent
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        maxLength={3}
+                        value={customizerDraft.monogram || 'RP'}
+                        onChange={(e) => setCustomizerDraft({ ...customizerDraft, monogram: e.target.value.toUpperCase() })}
+                        className="w-16 bg-white border border-[#DDD6C8] rounded px-2 py-1 text-xs font-serif font-bold text-center text-[#232624]"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -1071,9 +1199,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
                   <div className="p-4 bg-[#FAF9F6] border border-[#E6E0D5] rounded-md space-y-3">
                     <span className="font-semibold text-xs text-[#3D4534] block">Live Brand Preview Badge</span>
                     <div className="flex items-center gap-3 p-3 bg-[#272D23] text-white rounded">
-                      <div className="w-10 h-10 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
-                        {customizerDraft.monogram || 'RP'}
-                      </div>
+                      {customizerDraft.logo_url ? (
+                        <img
+                          src={customizerDraft.logo_url}
+                          alt="Logo Preview"
+                          className="h-10 w-auto max-w-[120px] object-contain rounded"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-[#3D4534] text-white flex items-center justify-center font-serif font-bold text-lg border border-[#4F5944]">
+                          {customizerDraft.monogram || 'RP'}
+                        </div>
+                      )}
                       <div>
                         <div className="font-serif text-base font-bold tracking-wide">
                           {customizerDraft.hotel_name || 'Theroyalpalaceinn'}
@@ -1371,9 +1507,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onReturnToSite, 
                     {/* Simulated Header */}
                     <div className="bg-[#2D3328] text-white p-2.5 px-4 text-xs flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-[#3D4534] flex items-center justify-center font-serif font-bold text-[11px] border border-[#4F5944]">
-                          {customizerDraft.monogram || 'RP'}
-                        </div>
+                        {customizerDraft.logo_url ? (
+                          <img
+                            src={customizerDraft.logo_url}
+                            alt=""
+                            className="h-6 w-auto max-w-[80px] object-contain rounded"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded bg-[#3D4534] flex items-center justify-center font-serif font-bold text-[11px] border border-[#4F5944]">
+                            {customizerDraft.monogram || 'RP'}
+                          </div>
+                        )}
                         <span className="font-serif font-bold">{customizerDraft.hotel_name || 'Theroyalpalaceinn'}</span>
                       </div>
                       <span className="text-[10px] text-[#A6AF9E]">Direct WhatsApp: +91 7700 869 635</span>
